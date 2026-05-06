@@ -12,7 +12,8 @@ def assign_tasks(req: AssignmentRequest, db: Session = Depends(get_db)):
     query = db.query(VerificationRecord).filter_by(
         session_id=req.session_id,
         is_deleted=False,
-        assigned_to=None
+        assigned_to=None,
+        record_type="beda"
     )
 
     # 2. Filter berdasarkan metode

@@ -9,32 +9,33 @@ const inputStyle = { width: '100%', height: 36, padding: '0 11px', border: '1px 
 export default function UploadPage() {
     const { role } = useAuthStore()
     const qc = useQueryClient()
-    const [fileAI, setFileAI] = useState(null)
-    const [filePetugas, setFilePetugas] = useState(null)
-    const refAI = useRef()
-    const refPetugas = useRef()
+    const [fileMatch, setFileMatch] = useState(null)
+    const [fileBeda, setFileBeda] = useState(null)
+    const refMatch = useRef()
+    const refBeda = useRef()
 
     const { data: sessions = [] } = useQuery({
         queryKey: ['sessions'],
         queryFn: () => api.get('/api/upload/sessions').then(r => r.data),
+        refetchInterval: 5000,
     })
 
     const upload = useMutation({
         mutationFn: () => {
             const fd = new FormData()
-            fd.append('file_ai', fileAI)
-            fd.append('file_petugas', filePetugas)
+            fd.append('file_match', fileMatch)
+            fd.append('file_beda', fileBeda)
             return api.post('/api/upload/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
         },
         onSuccess: () => {
-            toast.success('File berhasil diupload, sedang diproses')
+            toast.success('File berhasil diupload, sedang diproses...')
             qc.invalidateQueries(['sessions'])
             qc.invalidateQueries(['dashboard-stats'])
-            setFileAI(null); setFilePetugas(null)
-            if (refAI.current) refAI.current.value = ''
-            if (refPetugas.current) refPetugas.current.value = ''
+            setFileMatch(null); setFileBeda(null)
+            if (refMatch.current) refMatch.current.value = ''
+            if (refBeda.current) refBeda.current.value = ''
         },
-        onError: () => toast.error('Gagal upload file'),
+        onError: (err) => toast.error(err?.response?.data?.detail || 'Gagal upload file'),
     })
 
     const deleteSession = useMutation({
@@ -45,38 +46,62 @@ export default function UploadPage() {
 
     if (role !== 'admin') return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Akses ditolak.</div>
 
-    const canUpload = fileAI && filePetugas && !upload.isPending
+    const canUpload = fileMatch && fileBeda && !upload.isPending
+
+    const slots = [
+        {
+            label: 'File MATCH',
+            desc: 'Data AI = Biller (langsung SESUAI)',
+            ref: refMatch,
+            set: setFileMatch,
+            val: fileMatch,
+            color: { border: '#86efac', bg: '#f0fdf4', icon: '#16a34a', iconBg: '#dcfce7' },
+        },
+        {
+            label: 'File BEDA',
+            desc: 'Data AI ≠ Biller (perlu dikerjakan)',
+            ref: refBeda,
+            set: setFileBeda,
+            val: fileBeda,
+            color: { border: '#fca5a5', bg: '#fff5f5', icon: '#dc2626', iconBg: '#fee2e2' },
+        },
+    ]
 
     return (
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
             <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.4px', margin: 0 }}>Upload & Matching</h1>
-                <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Upload dua file Excel untuk dicocokkan berdasarkan ID Pelanggan</p>
+                <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.4px', margin: 0 }}>Upload Match & Beda</h1>
+                <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Upload hasil dari Web 1: File MATCH (sudah sesuai) dan File BEDA (perlu dikerjakan petugas)</p>
+            </div>
+
+            {/* Info banner */}
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 16px', marginBottom: 20, fontSize: 12, color: '#1d4ed8' }}>
+                <strong>ℹ️ Info:</strong> File MATCH → langsung dianggap <strong>SESUAI</strong>, tidak perlu dikerjakan petugas.
+                File BEDA → akan dibagi ke petugas untuk dikerjakan secara manual.
             </div>
 
             {/* Upload card */}
             <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: 24, marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 16 }}>Upload File Baru</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
-                    {[
-                        { label: 'File Hasil AI', ref: refAI, set: setFileAI, val: fileAI },
-                        { label: 'File Input Petugas', ref: refPetugas, set: setFilePetugas, val: filePetugas },
-                    ].map(({ label, ref, set, val }) => (
+                    {slots.map(({ label, desc, ref, set, val, color }) => (
                         <div key={label}
                             onClick={() => ref.current.click()}
                             style={{
-                                border: `1.5px dashed ${val ? '#86efac' : '#cbd5e1'}`,
+                                border: `1.5px dashed ${val ? color.border : '#cbd5e1'}`,
                                 borderRadius: 8, padding: '20px 16px', textAlign: 'center',
-                                cursor: 'pointer', background: val ? '#f0fdf4' : '#f8fafc',
+                                cursor: 'pointer', background: val ? color.bg : '#f8fafc',
                                 transition: 'all 0.15s'
                             }}
                         >
                             <input type="file" accept=".xlsx,.xls" ref={ref} style={{ display: 'none' }} onChange={e => set(e.target.files[0])} />
-                            <div style={{ width: 32, height: 32, borderRadius: 6, background: val ? '#dcfce7' : '#f1f5f9', margin: '0 auto 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <div style={{ width: 14, height: 14, border: `2px solid ${val ? '#16a34a' : '#94a3b8'}`, borderRadius: 2 }} />
+                            <div style={{ width: 32, height: 32, borderRadius: 6, background: val ? color.iconBg : '#f1f5f9', margin: '0 auto 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: 14, height: 14, border: `2px solid ${val ? color.icon : '#94a3b8'}`, borderRadius: 2 }} />
                             </div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: val ? '#16a34a' : '#374151', marginBottom: 2 }}>{val ? val.name : label}</div>
-                            <div style={{ fontSize: 11, color: '#94a3b8' }}>{val ? `${(val.size / 1024).toFixed(1)} KB` : 'Klik untuk pilih .xlsx'}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: val ? color.icon : '#374151', marginBottom: 2 }}>{val ? val.name : label}</div>
+                            <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                                {val ? `${(val.size / 1024).toFixed(1)} KB` : desc}
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -105,7 +130,7 @@ export default function UploadPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                         <thead>
                             <tr style={{ background: '#f8fafc' }}>
-                                {['Sesi', 'File AI', 'File Petugas', 'Total', 'Status', ''].map(h => (
+                                {['Sesi', 'File MATCH', 'File BEDA', 'Match', 'Beda', 'Total', 'Status', ''].map(h => (
                                     <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                                 ))}
                             </tr>
@@ -114,8 +139,18 @@ export default function UploadPage() {
                             {sessions.map(s => (
                                 <tr key={s.id} style={{ borderTop: '1px solid #f1f5f9' }}>
                                     <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0f172a' }}>#{s.id}</td>
-                                    <td style={{ padding: '10px 16px', color: '#64748b', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.file_ai_name}</td>
-                                    <td style={{ padding: '10px 16px', color: '#64748b', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.file_petugas_name}</td>
+                                    <td style={{ padding: '10px 16px', color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.file_match_name || '—'}</td>
+                                    <td style={{ padding: '10px 16px', color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.file_beda_name || '—'}</td>
+                                    <td style={{ padding: '10px 16px' }}>
+                                        <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
+                                            {s.total_match?.toLocaleString() ?? '—'}
+                                        </span>
+                                    </td>
+                                    <td style={{ padding: '10px 16px' }}>
+                                        <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
+                                            {s.total_beda?.toLocaleString() ?? '—'}
+                                        </span>
+                                    </td>
                                     <td style={{ padding: '10px 16px', color: '#374151' }}>{s.total_records?.toLocaleString() || '—'}</td>
                                     <td style={{ padding: '10px 16px' }}>
                                         <span style={{

@@ -4,8 +4,51 @@ from app.database import engine, Base
 from app.routers import auth, users, records, upload, assignments, export, notifications
 from app import models
 
+from sqlalchemy import text
+from app.database import engine, Base, SessionLocal
+
 # Buat semua tabel otomatis
 Base.metadata.create_all(bind=engine)
+
+# SQLite migration helper for new columns
+def run_migrations():
+    db = SessionLocal()
+    try:
+        # Check and add columns to verification_records
+        db.execute(text("ALTER TABLE verification_records ADD COLUMN record_type VARCHAR(10) DEFAULT 'beda'"))
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE verification_records ADD COLUMN reason_type VARCHAR(50)"))
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE verification_records ADD COLUMN corrected_stand FLOAT"))
+    except Exception:
+        pass
+
+    # Check and add columns to upload_sessions
+    try:
+        db.execute(text("ALTER TABLE upload_sessions ADD COLUMN file_match_name VARCHAR(200)"))
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE upload_sessions ADD COLUMN file_beda_name VARCHAR(200)"))
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE upload_sessions ADD COLUMN total_match INTEGER DEFAULT 0"))
+    except Exception:
+        pass
+    try:
+        db.execute(text("ALTER TABLE upload_sessions ADD COLUMN total_beda INTEGER DEFAULT 0"))
+    except Exception:
+        pass
+
+    db.commit()
+    db.close()
+
+run_migrations()
 
 app = FastAPI(
     title="PLN KWH Verification API",

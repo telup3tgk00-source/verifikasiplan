@@ -4,7 +4,7 @@ import NotificationBell from './NotificationBell'
 
 const navItems = [
     { to: '/', label: 'Dashboard', exact: true },
-    { to: '/upload', label: 'Upload & Matching' },
+    { to: '/upload', label: 'Upload Match & Beda' },
     { to: '/verifikasi', label: 'Verifikasi Data' },
     { to: '/assignment', label: 'Pembagian Tugas', roles: ['admin', 'supervisor'] },
     { to: '/progress', label: 'Progres Operator', roles: ['admin', 'supervisor'] },
@@ -18,8 +18,10 @@ export default function Layout() {
     const location = useLocation()
 
     function handleLogout() {
-        logout()
-        navigate('/login')
+        if (window.confirm('Apakah Anda yakin ingin keluar?')) {
+            logout()
+            navigate('/login')
+        }
     }
 
     const initials = fullName ? fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'U'

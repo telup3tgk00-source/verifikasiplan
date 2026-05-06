@@ -73,7 +73,7 @@ export default function AssignmentPage() {
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
             <div style={{ marginBottom: 24 }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.4px', margin: 0 }}>Pembagian Tugas</h1>
-                <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Distribusikan record ke verifikator berdasarkan metode pilihan</p>
+                <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Bagi data <strong style={{ color: '#dc2626' }}>BEDA</strong> ke petugas untuk dikerjakan manual</p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20, alignItems: 'start' }}>
@@ -87,7 +87,7 @@ export default function AssignmentPage() {
                         <select value={sessionId} onChange={e => setSessionId(e.target.value)} style={{ ...inputStyle }}>
                             <option value="">Pilih sesi...</option>
                             {sessions.filter(s => s.status === 'done').map(s => (
-                                <option key={s.id} value={s.id}>Sesi #{s.id} — {s.file_ai_name} ({s.total_records?.toLocaleString()} record)</option>
+                                <option key={s.id} value={s.id}>Sesi #{s.id} — {s.file_beda_name || s.file_match_name} ({s.total_beda?.toLocaleString() ?? s.total_records?.toLocaleString() ?? 0} data beda)</option>
                             ))}
                         </select>
                     </div>

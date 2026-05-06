@@ -17,6 +17,7 @@ def get_records(
     status: Optional[str] = None,
     assigned_to: Optional[int] = None,
     search: Optional[str] = None,
+    record_type: Optional[str] = None,
     anomaly_only: bool = False,
     merek_mismatch: bool = False,
     skip: int = 0,
@@ -31,6 +32,8 @@ def get_records(
         q = q.filter(VerificationRecord.assigned_to == assigned_to)
     if search:
         q = q.filter(VerificationRecord.id_pelanggan.contains(search))
+    if record_type:
+        q = q.filter(VerificationRecord.record_type == record_type)
     if anomaly_only:
         q = q.filter(VerificationRecord.is_anomaly == True)
     if merek_mismatch:
@@ -57,6 +60,8 @@ def update_record(record_id: int, req: RecordUpdate, db: Session = Depends(get_d
 
     record.status = req.status
     record.catatan = req.catatan
+    record.reason_type = req.reason_type
+    record.corrected_stand = req.corrected_stand
     record.verified_by = current_user.id
     record.verified_at = datetime.utcnow()
     db.commit()

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
-from app.models import RoleEnum, StatusEnum
+from app.models import RoleEnum, StatusEnum, REASON_CHOICES
 
 # ── AUTH ──────────────────────────────────────────
 class LoginRequest(BaseModel):
@@ -36,6 +36,7 @@ class UserOut(BaseModel):
 class RecordOut(BaseModel):
     id: int
     id_pelanggan: str
+    record_type: Optional[str] = "beda"
     stand_ai: Optional[float]
     stand_petugas: Optional[float]
     selisih: Optional[float]
@@ -46,6 +47,8 @@ class RecordOut(BaseModel):
     status: StatusEnum
     assigned_to: Optional[int]
     catatan: Optional[str]
+    reason_type: Optional[str]
+    corrected_stand: Optional[float]
     verified_at: Optional[datetime]
     is_anomaly: bool
 
@@ -55,11 +58,13 @@ class RecordOut(BaseModel):
 class RecordUpdate(BaseModel):
     status: StatusEnum
     catatan: Optional[str] = None
+    reason_type: Optional[str] = None    # alasan kenapa beda
+    corrected_stand: Optional[float] = None  # koreksi stand jika AI salah baca
 
 # ── ASSIGNMENT ────────────────────────────────────
 class AssignmentRequest(BaseModel):
     session_id: int
-    method: str  # "auto", "range", "prefix", "manual"
+    method: str = "auto"   # hanya "auto" yang dipakai sekarang
     operator_ids: list[int]
     range_start: Optional[str] = None
     range_end: Optional[str] = None

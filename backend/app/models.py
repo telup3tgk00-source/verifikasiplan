@@ -16,6 +16,15 @@ class StatusEnum(str, enum.Enum):
     VERIFIED_REJECT = "VERIFIED_REJECT"
     NEED_INVESTIGATION = "NEED_INVESTIGATION"
 
+# Alasan kenapa data BEDA (diisi petugas)
+REASON_CHOICES = {
+    "stand_aneh":       "Stand Aneh / Tidak Wajar",
+    "biller_asal_foto": "Biller Asal Foto",
+    "ai_salah_baca":    "AI Salah Baca (Koreksi Stand)",
+    "beda_meter":       "Beda Meter / Ganti Meter",
+    "lainnya":          "Lainnya",
+}
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -30,11 +39,16 @@ class UploadSession(Base):
     __tablename__ = "upload_sessions"
     id = Column(Integer, primary_key=True, index=True)
     uploaded_by = Column(Integer, ForeignKey("users.id"))
-    file_ai_name = Column(String(200))
-    file_petugas_name = Column(String(200))
+    file_match_name = Column(String(200), nullable=True)
+    file_beda_name = Column(String(200), nullable=True)
+    # Legacy compat (kept for existing rows)
+    file_ai_name = Column(String(200), nullable=True)
+    file_petugas_name = Column(String(200), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     status = Column(String(50), default="processing")
     total_records = Column(Integer, default=0)
+    total_match = Column(Integer, default=0)
+    total_beda = Column(Integer, default=0)
     records = relationship("VerificationRecord", back_populates="session")
 
 class VerificationRecord(Base):
@@ -42,8 +56,9 @@ class VerificationRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(Integer, ForeignKey("upload_sessions.id"))
     id_pelanggan = Column(String(50), index=True)
+    record_type = Column(String(10), default="beda")  # "match" | "beda"
     stand_ai = Column(Float, nullable=True)
-    stand_petugas = Column(Float, nullable=True)
+    stand_petugas = Column(Float, nullable=True)       # Stand Biller
     selisih = Column(Float, nullable=True)
     merek_ai = Column(String(100), nullable=True)
     merek_petugas = Column(String(100), nullable=True)
@@ -52,6 +67,9 @@ class VerificationRecord(Base):
     status = Column(Enum(StatusEnum), default=StatusEnum.PENDING)
     assigned_to = Column(Integer, ForeignKey("users.id"), nullable=True)
     catatan = Column(Text, nullable=True)
+    # Kolom baru untuk BEDA
+    reason_type = Column(String(50), nullable=True)    # Alasan kenapa beda
+    corrected_stand = Column(Float, nullable=True)     # Stand koreksi jika AI salah baca
     verified_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     verified_at = Column(DateTime, nullable=True)
     is_anomaly = Column(Boolean, default=False)
