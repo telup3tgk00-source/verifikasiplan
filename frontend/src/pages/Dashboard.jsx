@@ -122,7 +122,7 @@ export default function Dashboard() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                         <thead>
                             <tr style={{ background: '#f8fafc' }}>
-                                {['Sesi', 'Waktu Upload', 'Total Record', 'Status'].map(h => (
+                                {['Sesi', 'Nama Batch', 'Waktu Upload', 'Total Record', 'Status'].map(h => (
                                     <th key={h} style={{ padding: '10px 20px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                                 ))}
                             </tr>
@@ -131,6 +131,7 @@ export default function Dashboard() {
                             {sessions.slice(0, 5).map(s => (
                                 <tr key={s.id} style={{ borderTop: '1px solid #f1f5f9' }}>
                                     <td style={{ padding: '12px 20px', fontWeight: 600, color: '#0f172a' }}>#{s.id}</td>
+                                    <td style={{ padding: '12px 20px', color: '#0f172a', fontWeight: 500 }}>{s.batch_name || '—'}</td>
                                     <td style={{ padding: '12px 20px', color: '#64748b' }}>{new Date(s.created_at).toLocaleString('id-ID')}</td>
                                     <td style={{ padding: '12px 20px', color: '#374151' }}>{s.total_records?.toLocaleString() || '—'}</td>
                                     <td style={{ padding: '12px 20px' }}>

@@ -87,7 +87,7 @@ export default function AssignmentPage() {
                         <select value={sessionId} onChange={e => setSessionId(e.target.value)} style={{ ...inputStyle }}>
                             <option value="">Pilih sesi...</option>
                             {sessions.filter(s => s.status === 'done').map(s => (
-                                <option key={s.id} value={s.id}>Sesi #{s.id} — {s.file_beda_name || s.file_match_name} ({s.total_beda?.toLocaleString() ?? s.total_records?.toLocaleString() ?? 0} data beda)</option>
+                                <option key={s.id} value={s.id}>{s.batch_name ? s.batch_name : `Sesi #${s.id}`} — {s.file_beda_name || s.file_match_name} ({s.total_beda?.toLocaleString() ?? s.total_records?.toLocaleString() ?? 0} data beda)</option>
                             ))}
                         </select>
                     </div>

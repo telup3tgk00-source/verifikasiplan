@@ -64,7 +64,7 @@ export default function ExportPage() {
                         <option value="">Pilih sesi...</option>
                         {sessions.filter(s => s.status === 'done').map(s => (
                             <option key={s.id} value={s.id}>
-                                Sesi #{s.id} — {s.file_match_name || s.file_beda_name} ({s.total_match?.toLocaleString() ?? 0} match, {s.total_beda?.toLocaleString() ?? 0} beda)
+                                {s.batch_name ? s.batch_name : `Sesi #${s.id}`} — {s.file_match_name || s.file_beda_name} ({s.total_match?.toLocaleString() ?? 0} match, {s.total_beda?.toLocaleString() ?? 0} beda)
                             </option>
                         ))}
                     </select>
