@@ -82,12 +82,21 @@ const inputStyle = { height: 34, padding: '0 11px', border: '1px solid #d1d5db',
 const btnBase = { border: 'none', borderRadius: 6, padding: '9px 0', cursor: 'pointer', fontWeight: 600, fontSize: 12, width: '100%' }
 
 // ─── ACMT Session Panel ───────────────────────────────────────────────────────
+const COOKIE_FIELDS = [
+    { key: 'JSESSIONID',    label: 'JSESSIONID',    placeholder: '81EA7996B2C3D4E5F6A7...' },
+    { key: 'Pool_ACMTJava', label: 'Pool_ACMTJava', placeholder: '2990909632.16927.0000' },
+    { key: 'TS017170f7',    label: 'TS017170f7',    placeholder: '0111e437098a28f5...' },
+    { key: 'TS01be508d',    label: 'TS01be508d',    placeholder: '0111e437098a28f5...' },
+]
+
 function AcmtSessionPanel() {
-    const [status, setStatus]       = useState(null)   // {has_session, set_by, set_at}
+    const [status, setStatus]       = useState(null)
     const [showForm, setShowForm]   = useState(false)
     const [showGuide, setShowGuide] = useState(false)
-    const [jid, setJid]             = useState('')
     const [saving, setSaving]       = useState(false)
+    const [fields, setFields]       = useState({
+        JSESSIONID: '', Pool_ACMTJava: '', TS017170f7: '', TS01be508d: ''
+    })
 
     const loadStatus = async () => {
         try {
@@ -99,21 +108,26 @@ function AcmtSessionPanel() {
     useEffect(() => { loadStatus() }, [])
 
     const handleSave = async () => {
-        if (!jid.trim()) return
-        if (!jid.includes('JSESSIONID')) {
-            alert('Cookie harus mengandung JSESSIONID')
+        if (!fields.JSESSIONID.trim()) {
+            alert('JSESSIONID wajib diisi')
             return
         }
+        // Rakit cookie string — skip field yang kosong
+        const cookieString = COOKIE_FIELDS
+            .filter(f => fields[f.key].trim())
+            .map(f => `${f.key}=${fields[f.key].trim()}`)
+            .join('; ')
+
         setSaving(true)
         try {
             const r = await fetch('/api/foto/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cookie_string: jid.trim(), set_by: 'admin' })
+                body: JSON.stringify({ cookie_string: cookieString, set_by: 'admin' })
             })
             const data = await r.json()
             if (!r.ok) throw new Error(data.detail || 'Gagal')
-            setJid('')
+            setFields({ JSESSIONID: '', Pool_ACMTJava: '', TS017170f7: '', TS01be508d: '' })
             setShowForm(false)
             await loadStatus()
         } catch(e) { alert('Gagal menyimpan: ' + e.message) }
@@ -161,41 +175,48 @@ function AcmtSessionPanel() {
             {/* Panduan */}
             {showGuide && (
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: 12, fontSize: 11, color: '#374151', lineHeight: 1.7 }}>
-                    <strong>Cara copy semua cookie ACMT dari browser (Chrome):</strong>
+                    <strong>Cara ambil nilai cookie dari DevTools (Chrome):</strong>
                     <ol style={{ margin: '6px 0 0 16px', padding: 0 }}>
                         <li>Buka <a href="https://portalapp.iconpln.co.id/acmt/index.jsp" target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>portalapp.iconpln.co.id/acmt/index.jsp</a></li>
                         <li>Login dengan username &amp; password, isi CAPTCHA</li>
-                        <li>Setelah masuk, tekan <kbd style={{ background: '#e2e8f0', padding: '1px 5px', borderRadius: 3 }}>F12</kbd> → tab <strong>Network</strong></li>
-                        <li>Klik salah satu request (misal: <code>Main.htm</code>)</li>
-                        <li>Di panel kanan → <strong>Request Headers</strong> → cari baris <strong>Cookie:</strong></li>
-                        <li>Klik kanan nilai Cookie → <strong>Copy value</strong></li>
-                        <li>Paste di form ini (akan berisi semua cookie termasuk JSESSIONID, TS01be508d, Pool_ACMTJava, dll)</li>
+                        <li>Tekan <kbd style={{ background: '#e2e8f0', padding: '1px 5px', borderRadius: 3 }}>F12</kbd> &rarr; tab <strong>Application</strong> &rarr; <strong>Cookies</strong> &rarr; <code>portalapp.iconpln.co.id</code></li>
+                        <li>Cari baris <strong>JSESSIONID</strong> &rarr; klik &rarr; copy kolom <strong>Value</strong></li>
+                        <li>Lakukan hal yang sama untuk <strong>Pool_ACMTJava</strong>, <strong>TS017170f7</strong>, <strong>TS01be508d</strong></li>
+                        <li>Paste masing-masing nilai ke field yang sesuai di form ini</li>
                     </ol>
-                    <p style={{ margin: '8px 0 4px', color: '#64748b', fontStyle: 'italic' }}>Contoh format:</p>
-                    <code style={{ display: 'block', background: '#e2e8f0', padding: '6px 8px', borderRadius: 4, wordBreak: 'break-all', fontSize: 10 }}>
-                        JSESSIONID=ABC123; TS01be508d=XYZ; Pool_ACMTJava=node01; TS017170f7=DEF
-                    </code>
                     <p style={{ margin: '8px 0 0', color: '#64748b' }}>⏱ Cookie berlaku beberapa jam. Update kembali jika foto tidak muncul.</p>
                 </div>
             )}
 
-            {/* Form input */}
+            {/* Form: 4 input field terpisah */}
             {showForm && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <textarea
-                        value={jid}
-                        onChange={e => setJid(e.target.value)}
-                        rows={3}
-                        placeholder={'Paste semua cookie di sini...\nContoh: JSESSIONID=xxx; TS01be508d=xxx; Pool_ACMTJava=xxx; TS017170f7=xxx'}
-                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db',
-                                 borderRadius: 5, fontSize: 11, fontFamily: 'monospace', outline: 'none',
-                                 resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.5 }}
-                    />
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={handleSave} disabled={saving || !jid.trim()}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        {COOKIE_FIELDS.map(f => (
+                            <div key={f.key}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: '#64748b',
+                                                display: 'block', marginBottom: 3, fontFamily: 'monospace',
+                                                textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                                    {f.label}
+                                    {f.key === 'JSESSIONID' && <span style={{ color: '#ef4444' }}> *</span>}
+                                </label>
+                                <input
+                                    value={fields[f.key]}
+                                    onChange={e => setFields(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                    placeholder={f.placeholder}
+                                    style={{ width: '100%', height: 30, padding: '0 8px',
+                                             border: `1px solid ${f.key === 'JSESSIONID' && !fields[f.key] ? '#fca5a5' : '#d1d5db'}`,
+                                             borderRadius: 5, fontSize: 11, fontFamily: 'monospace',
+                                             outline: 'none', boxSizing: 'border-box', color: '#1e293b' }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <button onClick={handleSave} disabled={saving || !fields.JSESSIONID.trim()}
                             style={{ padding: '0 16px', height: 32, background: '#2563eb', color: '#fff',
                                      border: 'none', borderRadius: 5, cursor: 'pointer', fontSize: 12,
-                                     fontWeight: 600, opacity: saving || !jid.trim() ? 0.5 : 1 }}>
+                                     fontWeight: 600, opacity: saving || !fields.JSESSIONID.trim() ? 0.5 : 1 }}>
                             {saving ? 'Menyimpan...' : 'Simpan Cookie'}
                         </button>
                         <button onClick={() => setShowForm(false)}
@@ -203,6 +224,9 @@ function AcmtSessionPanel() {
                                      border: '1px solid #e2e8f0', borderRadius: 5, cursor: 'pointer', fontSize: 12 }}>
                             Batal
                         </button>
+                        <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 4 }}>
+                            * Copy nilai dari kolom Value di DevTools
+                        </span>
                     </div>
                 </div>
             )}
