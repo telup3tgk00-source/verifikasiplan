@@ -16,14 +16,13 @@ class StatusEnum(str, enum.Enum):
     VERIFIED_REJECT = "VERIFIED_REJECT"
     NEED_INVESTIGATION = "NEED_INVESTIGATION"
 
-# Alasan kenapa data BEDA (diisi petugas)
-REASON_CHOICES = {
-    "stand_aneh":       "Stand Aneh / Tidak Wajar",
-    "biller_asal_foto": "Biller Asal Foto",
-    "ai_salah_baca":    "AI Salah Baca (Koreksi Stand)",
-    "beda_meter":       "Beda Meter / Ganti Meter",
-    "lainnya":          "Lainnya",
-}
+class ReasonOption(Base):
+    __tablename__ = "reason_options"
+    id = Column(Integer, primary_key=True, index=True)
+    value = Column(String(100), unique=True, index=True)
+    label = Column(String(200))
+    is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
 
 class User(Base):
     __tablename__ = "users"

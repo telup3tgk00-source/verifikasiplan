@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
-from app.models import RoleEnum, StatusEnum, REASON_CHOICES
+from app.models import RoleEnum, StatusEnum
 
 # ── AUTH ──────────────────────────────────────────
 class LoginRequest(BaseModel):

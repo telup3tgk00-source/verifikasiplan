@@ -9,7 +9,7 @@ const navItems = [
     { to: '/assignment', label: 'Pembagian Tugas', roles: ['admin', 'supervisor'] },
     { to: '/progress', label: 'Progres Operator', roles: ['admin', 'supervisor'] },
     { to: '/export', label: 'Export Excel', roles: ['admin', 'supervisor'] },
-    { to: '/users', label: 'Kelola Akun', roles: ['admin'] },
+    { to: '/users', label: 'Pengaturan', roles: ['admin'] },
 ]
 
 export default function Layout() {

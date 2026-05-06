@@ -110,14 +110,7 @@ const STATUS_STYLE = {
     NEED_INVESTIGATION:  { bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
 }
 
-const REASON_OPTIONS = [
-    { value: '', label: '— Pilih Alasan —' },
-    { value: 'stand_aneh',       label: 'Stand Aneh / Tidak Wajar' },
-    { value: 'biller_asal_foto', label: 'Biller Asal Foto' },
-    { value: 'ai_salah_baca',    label: 'AI Salah Baca (Koreksi Stand)' },
-    { value: 'beda_meter',       label: 'Beda Meter / Ganti Meter' },
-    { value: 'lainnya',          label: 'Lainnya' },
-]
+// Alasan perbedaan sekarang diambil dinamis dari API
 
 function Badge({ status }) {
     const s = STATUS_STYLE[status] || STATUS_STYLE.PENDING
@@ -287,6 +280,11 @@ function AcmtSessionPanel() {
 export default function VerifikasiPage() {
     const { user, role } = useAuthStore()
     const qc = useQueryClient()
+
+    const { data: reasons = [] } = useQuery({
+        queryKey: ['reasons'],
+        queryFn: () => api.get('/api/settings/reasons').then(r => r.data),
+    })
     const [page, setPage] = useState(1)
     const [filter, setFilter] = useState({ status: '', search: '', anomalyOnly: false, merekMismatch: false, sessionId: '' })
     const [selected, setSelected] = useState(null)
@@ -536,7 +534,8 @@ export default function VerifikasiPage() {
                                 onChange={e => setReasonType(e.target.value)}
                                 style={{ ...inputStyle, width: '100%', height: 36, paddingLeft: 11, boxSizing: 'border-box' }}
                             >
-                                {REASON_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                <option value="">— Pilih Alasan —</option>
+                                {reasons.filter(r => r.is_active || r.value === reasonType).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
                         </div>
 
@@ -613,7 +612,7 @@ export default function VerifikasiPage() {
                                     <td style={{ padding: '10px 16px', color: '#64748b' }}>{r.merek_ai || '—'} / {r.merek_petugas || '—'}</td>
                                     <td style={{ padding: '10px 16px', color: '#64748b', fontSize: 11 }}>
                                         {r.reason_type
-                                            ? REASON_OPTIONS.find(o => o.value === r.reason_type)?.label || r.reason_type
+                                            ? reasons.find(o => o.value === r.reason_type)?.label || r.reason_type
                                             : <span style={{ color: '#cbd5e1' }}>—</span>}
                                     </td>
                                     <td style={{ padding: '10px 16px' }}><Badge status={r.status} /></td>

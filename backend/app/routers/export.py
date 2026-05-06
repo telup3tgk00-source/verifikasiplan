@@ -57,7 +57,7 @@ def export_excel(
     if operator_id:
         q = q.filter(VerificationRecord.assigned_to == operator_id)
     
-    from app.models import User, REASON_CHOICES
+    from app.models import User, ReasonOption
     records = q.all()
 
     wb = Workbook()
@@ -75,12 +75,13 @@ def export_excel(
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill("solid", fgColor="0D2A5E")
 
-    # Ambil map user untuk efisiensi
+    # Ambil map user & alasan untuk efisiensi
     users = {u.id: u.full_name for u in db.query(User).all()}
+    reasons_map = {r.value: r.label for r in db.query(ReasonOption).all()}
 
     for rec in records:
         status_val = rec.status.value if rec.status else "PENDING"
-        reason_str = REASON_CHOICES.get(rec.reason_type, rec.reason_type) if rec.reason_type else ""
+        reason_str = reasons_map.get(rec.reason_type, rec.reason_type) if rec.reason_type else ""
         
         # Tampilkan stand koreksi sebagai stand AI jika ada
         display_stand_ai = rec.corrected_stand if rec.corrected_stand is not None else rec.stand_ai
