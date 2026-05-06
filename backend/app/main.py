@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
-from app.routers import auth, users, records, upload, assignments, export, notifications
+from app.routers import auth, users, records, upload, assignments, export, notifications, foto
 from app import models
 
 from sqlalchemy import text
@@ -73,6 +73,7 @@ app.include_router(upload.router,        prefix="/api/upload",        tags=["Upl
 app.include_router(assignments.router,   prefix="/api/assignments",   tags=["Assignments"])
 app.include_router(export.router,        prefix="/api/export",        tags=["Export"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
+app.include_router(foto.router,          prefix="/api",               tags=["Foto Meter"])
 
 @app.get("/")
 def root():

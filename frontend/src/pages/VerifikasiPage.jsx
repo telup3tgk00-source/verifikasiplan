@@ -1,8 +1,51 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../api/axios'
 import { toast } from 'sonner'
 import { useAuthStore } from '../store/authStore'
+
+// ─── Foto Meter Helpers ───────────────────────────────────────────────────────
+const FOTO_MONTHS = 3   // jumlah bulan ke belakang yang ditampilkan
+const FOTO_PER_MONTH = 3
+
+function getBlthList() {
+    const list = []
+    const now = new Date()
+    for (let i = 0; i < FOTO_MONTHS; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, '0')
+        list.push(`${y}${m}`)
+    }
+    return list
+}
+
+function FotoModal({ foto, onClose }) {
+    return (
+        <div
+            onClick={onClose}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200,
+                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}
+        >
+            <div onClick={e => e.stopPropagation()}
+                 style={{ background: '#1e293b', borderRadius: 10, padding: 16, maxWidth: '90vw', maxHeight: '90vh',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <span style={{ color: '#94a3b8', fontSize: 12 }}>
+                        PHOTO {foto.fotoke} &mdash; {foto.blth.slice(0,4)}/{foto.blth.slice(4)} &nbsp;|&nbsp; {foto.idpel}
+                    </span>
+                    <button onClick={onClose}
+                        style={{ background: '#334155', border: 'none', color: '#94a3b8', borderRadius: 5,
+                                 width: 26, height: 26, cursor: 'pointer', fontSize: 15, lineHeight: 1 }}>×</button>
+                </div>
+                {foto.loading && <div style={{ color: '#94a3b8', padding: 40, fontSize: 13 }}>Memuat foto...</div>}
+                {foto.error  && <div style={{ color: '#f87171', padding: 20, fontSize: 12, textAlign: 'center' }}>{foto.error}</div>}
+                {foto.url    && <img src={foto.url} alt="foto meter"
+                    style={{ maxWidth: '80vw', maxHeight: '75vh', borderRadius: 6, objectFit: 'contain' }} />}
+            </div>
+        </div>
+    )
+}
 
 const STATUS_LABEL = {
     PENDING: 'Pending',
@@ -38,6 +81,135 @@ function Badge({ status }) {
 const inputStyle = { height: 34, padding: '0 11px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, outline: 'none', background: '#fff', color: '#1e293b' }
 const btnBase = { border: 'none', borderRadius: 6, padding: '9px 0', cursor: 'pointer', fontWeight: 600, fontSize: 12, width: '100%' }
 
+// ─── ACMT Session Panel ───────────────────────────────────────────────────────
+function AcmtSessionPanel() {
+    const [status, setStatus]       = useState(null)   // {has_session, set_by, set_at}
+    const [showForm, setShowForm]   = useState(false)
+    const [showGuide, setShowGuide] = useState(false)
+    const [jid, setJid]             = useState('')
+    const [saving, setSaving]       = useState(false)
+
+    const loadStatus = async () => {
+        try {
+            const r = await fetch('/api/foto/session/status')
+            setStatus(await r.json())
+        } catch { setStatus(null) }
+    }
+
+    useEffect(() => { loadStatus() }, [])
+
+    const handleSave = async () => {
+        if (!jid.trim()) return
+        if (!jid.includes('JSESSIONID')) {
+            alert('Cookie harus mengandung JSESSIONID')
+            return
+        }
+        setSaving(true)
+        try {
+            const r = await fetch('/api/foto/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cookie_string: jid.trim(), set_by: 'admin' })
+            })
+            const data = await r.json()
+            if (!r.ok) throw new Error(data.detail || 'Gagal')
+            setJid('')
+            setShowForm(false)
+            await loadStatus()
+        } catch(e) { alert('Gagal menyimpan: ' + e.message) }
+        finally { setSaving(false) }
+    }
+
+    const hasSession = status?.has_session
+    const setAt      = status?.set_at ? new Date(status.set_at).toLocaleString('id-ID') : null
+    const cookieKeys = status?.cookie_keys || []
+
+    return (
+        <div style={{ background: hasSession ? '#f0fdf4' : '#fef2f2',
+                      border: `1px solid ${hasSession ? '#bbf7d0' : '#fecaca'}`,
+                      borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+                      display: 'flex', gap: 12, flexDirection: 'column' }}>
+            {/* Status bar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+                               color: hasSession ? '#15803d' : '#dc2626', letterSpacing: '0.5px' }}>
+                    {hasSession ? '● Sesi ACMT Aktif' : '○ Sesi ACMT Belum Diset'}
+                </span>
+                {setAt && <span style={{ fontSize: 11, color: '#64748b' }}>diset {setAt} oleh {status.set_by}</span>}
+                {cookieKeys.length > 0 && (
+                    <span style={{ fontSize: 10, color: '#64748b', background: '#f1f5f9',
+                                   border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 7px',
+                                   fontFamily: 'monospace' }}>
+                        {cookieKeys.join(' · ')}
+                    </span>
+                )}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                    <button onClick={() => { setShowGuide(g => !g); setShowForm(false) }}
+                        style={{ fontSize: 11, padding: '3px 10px', border: '1px solid #94a3b8',
+                                 borderRadius: 4, background: '#fff', cursor: 'pointer', color: '#374151' }}>
+                        ? Cara copy cookie
+                    </button>
+                    <button onClick={() => { setShowForm(f => !f); setShowGuide(false) }}
+                        style={{ fontSize: 11, padding: '3px 10px', border: 'none', borderRadius: 4,
+                                 background: hasSession ? '#16a34a' : '#dc2626',
+                                 color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                        {hasSession ? '↻ Update Cookie' : '+ Set Cookie ACMT'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Panduan */}
+            {showGuide && (
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: 12, fontSize: 11, color: '#374151', lineHeight: 1.7 }}>
+                    <strong>Cara copy semua cookie ACMT dari browser (Chrome):</strong>
+                    <ol style={{ margin: '6px 0 0 16px', padding: 0 }}>
+                        <li>Buka <a href="https://portalapp.iconpln.co.id/acmt/index.jsp" target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>portalapp.iconpln.co.id/acmt/index.jsp</a></li>
+                        <li>Login dengan username &amp; password, isi CAPTCHA</li>
+                        <li>Setelah masuk, tekan <kbd style={{ background: '#e2e8f0', padding: '1px 5px', borderRadius: 3 }}>F12</kbd> → tab <strong>Network</strong></li>
+                        <li>Klik salah satu request (misal: <code>Main.htm</code>)</li>
+                        <li>Di panel kanan → <strong>Request Headers</strong> → cari baris <strong>Cookie:</strong></li>
+                        <li>Klik kanan nilai Cookie → <strong>Copy value</strong></li>
+                        <li>Paste di form ini (akan berisi semua cookie termasuk JSESSIONID, TS01be508d, Pool_ACMTJava, dll)</li>
+                    </ol>
+                    <p style={{ margin: '8px 0 4px', color: '#64748b', fontStyle: 'italic' }}>Contoh format:</p>
+                    <code style={{ display: 'block', background: '#e2e8f0', padding: '6px 8px', borderRadius: 4, wordBreak: 'break-all', fontSize: 10 }}>
+                        JSESSIONID=ABC123; TS01be508d=XYZ; Pool_ACMTJava=node01; TS017170f7=DEF
+                    </code>
+                    <p style={{ margin: '8px 0 0', color: '#64748b' }}>⏱ Cookie berlaku beberapa jam. Update kembali jika foto tidak muncul.</p>
+                </div>
+            )}
+
+            {/* Form input */}
+            {showForm && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <textarea
+                        value={jid}
+                        onChange={e => setJid(e.target.value)}
+                        rows={3}
+                        placeholder={'Paste semua cookie di sini...\nContoh: JSESSIONID=xxx; TS01be508d=xxx; Pool_ACMTJava=xxx; TS017170f7=xxx'}
+                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db',
+                                 borderRadius: 5, fontSize: 11, fontFamily: 'monospace', outline: 'none',
+                                 resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.5 }}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={handleSave} disabled={saving || !jid.trim()}
+                            style={{ padding: '0 16px', height: 32, background: '#2563eb', color: '#fff',
+                                     border: 'none', borderRadius: 5, cursor: 'pointer', fontSize: 12,
+                                     fontWeight: 600, opacity: saving || !jid.trim() ? 0.5 : 1 }}>
+                            {saving ? 'Menyimpan...' : 'Simpan Cookie'}
+                        </button>
+                        <button onClick={() => setShowForm(false)}
+                            style={{ padding: '0 10px', height: 32, background: '#f1f5f9', color: '#374151',
+                                     border: '1px solid #e2e8f0', borderRadius: 5, cursor: 'pointer', fontSize: 12 }}>
+                            Batal
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
 export default function VerifikasiPage() {
     const { user, role } = useAuthStore()
     const qc = useQueryClient()
@@ -47,6 +219,29 @@ export default function VerifikasiPage() {
     const [note, setNote] = useState('')
     const [reasonType, setReasonType] = useState('')
     const [correctedStand, setCorrectedStand] = useState('')
+    const [activeFoto, setActiveFoto] = useState(null)   // { idpel, blth, fotoke, loading, url, error }
+    const [expandedFoto, setExpandedFoto] = useState(null) // idpel yang sedang di-expand
+
+    const blthList = getBlthList()
+
+    const handleFotoClick = async (idpel, blth, fotoke) => {
+        setActiveFoto({ idpel, blth, fotoke, loading: true, url: null, error: null })
+        try {
+            const resp = await fetch(
+                `/api/foto?idpel=${encodeURIComponent(idpel)}&blth=${blth}&fotoke=${fotoke}`,
+                { credentials: 'include' }
+            )
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}))
+                throw new Error(err.detail || `HTTP ${resp.status}`)
+            }
+            const blob = await resp.blob()
+            const url  = URL.createObjectURL(blob)
+            setActiveFoto(prev => ({ ...prev, loading: false, url }))
+        } catch (e) {
+            setActiveFoto(prev => ({ ...prev, loading: false, error: e.message }))
+        }
+    }
 
     const { data: records = [], isLoading } = useQuery({
         queryKey: ['records', page, filter],
@@ -106,6 +301,8 @@ export default function VerifikasiPage() {
 
     return (
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+            {/* Foto Meter Modal */}
+            {activeFoto && <FotoModal foto={activeFoto} onClose={() => setActiveFoto(null)} />}
             {/* Header + Filters */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                 <div>
@@ -139,6 +336,9 @@ export default function VerifikasiPage() {
                     </select>
                 </div>
             </div>
+
+            {/* Panel Sesi ACMT */}
+            <AcmtSessionPanel />
 
             {/* Modal */}
             {selected && (
@@ -257,7 +457,7 @@ export default function VerifikasiPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                         <thead>
                             <tr style={{ background: '#f8fafc' }}>
-                                {['ID Pelanggan', 'Stand AI', 'Stand Biller', 'Selisih', 'Merek AI / Biller', 'Alasan', 'Status', ''].map(h => (
+                                {['ID Pelanggan', 'Stand AI', 'Stand Biller', 'Selisih', 'Merek AI / Biller', 'Alasan', 'Status', 'Foto', ''].map(h => (
                                     <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                                 ))}
                             </tr>
@@ -285,6 +485,35 @@ export default function VerifikasiPage() {
                                             : <span style={{ color: '#cbd5e1' }}>—</span>}
                                     </td>
                                     <td style={{ padding: '10px 16px' }}><Badge status={r.status} /></td>
+                                    {/* Kolom Foto */}
+                                    <td style={{ padding: '10px 16px', minWidth: 120 }}>
+                                        <button
+                                            onClick={() => setExpandedFoto(expandedFoto === r.id_pelanggan ? null : r.id_pelanggan)}
+                                            style={{ background: expandedFoto === r.id_pelanggan ? '#dbeafe' : '#f1f5f9',
+                                                     color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 5,
+                                                     padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}
+                                        >
+                                            📷 Foto
+                                        </button>
+                                        {expandedFoto === r.id_pelanggan && (
+                                            <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                {blthList.map(blth =>
+                                                    Array.from({ length: FOTO_PER_MONTH }, (_, i) => i + 1).map(fk => (
+                                                        <button
+                                                            key={`${blth}-${fk}`}
+                                                            onClick={() => handleFotoClick(r.id_pelanggan, blth, String(fk))}
+                                                            style={{ background: '#fff', border: '1px solid #e2e8f0',
+                                                                     borderRadius: 4, padding: '3px 8px', cursor: 'pointer',
+                                                                     fontSize: 10, color: '#374151', textAlign: 'left',
+                                                                     whiteSpace: 'nowrap' }}
+                                                        >
+                                                            PHOTO {fk} - {blth}
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td style={{ padding: '10px 16px' }}>
                                         <button
                                             onClick={() => openModal(r)}

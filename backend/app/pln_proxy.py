@@ -1,0 +1,153 @@
+"""
+PLN ACMT Proxy Module — Full Cookie Mode
+User paste SELURUH string cookie dari browser DevTools,
+backend forward semua cookie ke ICONPLN.
+"""
+
+import logging
+import httpx
+
+logger = logging.getLogger(__name__)
+
+ACMT_BASE_URL = "https://portalapp.iconpln.co.id/acmt"
+PHOTO_URL     = f"{ACMT_BASE_URL}/DisplayBlobServlet1"
+
+# ─── Session Cache (in-memory) ────────────────────────────────────────────────
+_session_cache: dict = {
+    "cookie_string": None,   # full cookie string dari browser
+    "set_by":        None,
+    "set_at":        None,
+}
+
+_BASE_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+    "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Referer": f"{ACMT_BASE_URL}/Main.htm",
+}
+
+
+def set_cookie_string(cookie_string: str, set_by: str = "admin") -> None:
+    """Simpan full cookie string dari browser."""
+    from datetime import datetime
+    cleaned = cookie_string.strip()
+    _session_cache["cookie_string"] = cleaned
+    _session_cache["set_by"]        = set_by
+    _session_cache["set_at"]        = datetime.now().isoformat()
+    # Log tanpa expose nilai cookie
+    keys = [part.split("=")[0].strip() for part in cleaned.split(";") if "=" in part]
+    logger.info("Cookie diupdate oleh %s — keys: %s", set_by, ", ".join(keys))
+
+
+def get_session_status() -> dict:
+    cookie_string = _session_cache.get("cookie_string")
+    keys = []
+    if cookie_string:
+        keys = [p.split("=")[0].strip() for p in cookie_string.split(";") if "=" in p]
+    return {
+        "has_session": bool(cookie_string),
+        "set_by":      _session_cache.get("set_by"),
+        "set_at":      _session_cache.get("set_at"),
+        "cookie_keys": keys,   # nama-nama cookie yang tersimpan (tanpa nilai)
+    }
+
+
+async def fetch_photo(idpel: str, blth: str, fotoke: str) -> tuple[bytes, str]:
+    """
+    Ambil foto meter dari ACMT PLN.
+    Forward SEMUA cookie yang disimpan ke ICONPLN.
+    """
+    cookie_string = _session_cache.get("cookie_string")
+    if not cookie_string:
+        raise RuntimeError(
+            "Cookie ACMT belum diset. "
+            "Login ke ACMT di browser → F12 → Network → copy semua cookie → paste di panel Sesi ACMT."
+        )
+
+    params = {
+        "idpel":       idpel,
+        "nomor_meter": "null",
+        "fotoke":      fotoke,
+        "blth":        blth,
+        "isPhoto":     "null",
+    }
+
+    headers = {
+        **_BASE_HEADERS,
+        "Cookie": cookie_string,   # Forward SEMUA cookie
+    }
+
+    async with httpx.AsyncClient(
+        timeout=30.0,
+        verify=False,
+        follow_redirects=False,
+    ) as client:
+        resp = await client.get(PHOTO_URL, params=params, headers=headers)
+
+    content_type = resp.headers.get("content-type", "").lower()
+    status_code  = resp.status_code
+
+    logger.info(
+        "ACMT [%d] ct=%s size=%d — idpel=%s blth=%s fotoke=%s",
+        status_code, content_type, len(resp.content), idpel, blth, fotoke
+    )
+
+    # ─── Sukses: response adalah gambar ───────────────────────────────────────
+    if status_code == 200 and (
+        content_type.startswith("image/")
+        or content_type == "application/octet-stream"
+    ):
+        ct = content_type if content_type.startswith("image/") else "image/jpeg"
+        return resp.content, ct
+
+    # Kadang server kembalikan binary tanpa content-type yang benar
+    if status_code == 200 and len(resp.content) > 100:
+        # Cek magic bytes JPEG: FF D8 FF
+        if resp.content[:3] == b'\xff\xd8\xff':
+            logger.info("Terdeteksi JPEG dari magic bytes")
+            return resp.content, "image/jpeg"
+        # Magic bytes PNG: 89 50 4E 47
+        if resp.content[:4] == b'\x89PNG':
+            return resp.content, "image/png"
+
+    # ─── Redirect → session/cookie expired ────────────────────────────────────
+    if status_code in (301, 302, 303, 307, 308):
+        location = resp.headers.get("location", "")
+        logger.warning("Redirect ke: %s — cookie mungkin expired", location)
+        _session_cache["cookie_string"] = None
+        raise RuntimeError(
+            "SESSION_EXPIRED: Cookie ACMT sudah kadaluarsa. "
+            "Login ulang di browser dan update cookie di panel Sesi ACMT."
+        )
+
+    # ─── HTML → halaman login atau error ──────────────────────────────────────
+    if "text/html" in content_type or status_code in (401, 403):
+        body = resp.text[:400] if resp.content else ""
+        logger.warning("Response HTML/401: %s", body[:200])
+        if any(k in body.lower() for k in ("login", "captcha", "j_username")):
+            _session_cache["cookie_string"] = None
+            raise RuntimeError(
+                "SESSION_EXPIRED: Cookie ACMT sudah kadaluarsa. "
+                "Login ulang di browser dan update cookie di panel Sesi ACMT."
+            )
+        raise RuntimeError(
+            f"Foto tidak tersedia (idpel={idpel} blth={blth} fotoke={fotoke})"
+        )
+
+    # ─── Lainnya ──────────────────────────────────────────────────────────────
+    if status_code == 200 and len(resp.content) == 0:
+        raise RuntimeError(
+            f"Foto tidak tersedia — response kosong "
+            f"(idpel={idpel} blth={blth} fotoke={fotoke})"
+        )
+
+    raise RuntimeError(
+        f"Gagal mengambil foto: HTTP {status_code} ct={content_type} "
+        f"(idpel={idpel} blth={blth} fotoke={fotoke})"
+    )
