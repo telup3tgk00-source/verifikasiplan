@@ -1,0 +1,4 @@
+backend/pln_kwh.db
+backend/__pycache__/
+frontend/node_modules/
+.env

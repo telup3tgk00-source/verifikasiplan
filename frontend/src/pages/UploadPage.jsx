@@ -11,6 +11,7 @@ export default function UploadPage() {
     const qc = useQueryClient()
     const [fileMatch, setFileMatch] = useState(null)
     const [fileBeda, setFileBeda] = useState(null)
+    const [batchName, setBatchName] = useState('')
     const refMatch = useRef()
     const refBeda = useRef()
 
@@ -25,13 +26,14 @@ export default function UploadPage() {
             const fd = new FormData()
             fd.append('file_match', fileMatch)
             fd.append('file_beda', fileBeda)
+            if (batchName) fd.append('batch_name', batchName)
             return api.post('/api/upload/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
         },
         onSuccess: () => {
             toast.success('File berhasil diupload, sedang diproses...')
             qc.invalidateQueries(['sessions'])
             qc.invalidateQueries(['dashboard-stats'])
-            setFileMatch(null); setFileBeda(null)
+            setFileMatch(null); setFileBeda(null); setBatchName('')
             if (refMatch.current) refMatch.current.value = ''
             if (refBeda.current) refBeda.current.value = ''
         },
@@ -83,6 +85,20 @@ export default function UploadPage() {
             {/* Upload card */}
             <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: 24, marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 16 }}>Upload File Baru</div>
+                
+                <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>
+                        Nama Batch <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Opsional - untuk membedakan sesi)</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        value={batchName} 
+                        onChange={e => setBatchName(e.target.value)} 
+                        placeholder="Contoh: Data Bulan Mei Area 1" 
+                        style={inputStyle} 
+                    />
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
                     {slots.map(({ label, desc, ref, set, val, color }) => (
                         <div key={label}
@@ -130,7 +146,7 @@ export default function UploadPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                         <thead>
                             <tr style={{ background: '#f8fafc' }}>
-                                {['Sesi', 'File MATCH', 'File BEDA', 'Match', 'Beda', 'Total', 'Status', ''].map(h => (
+                                {['Sesi', 'Nama Batch', 'File MATCH', 'File BEDA', 'Match', 'Beda', 'Total', 'Status', ''].map(h => (
                                     <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                                 ))}
                             </tr>
@@ -139,6 +155,7 @@ export default function UploadPage() {
                             {sessions.map(s => (
                                 <tr key={s.id} style={{ borderTop: '1px solid #f1f5f9' }}>
                                     <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0f172a' }}>#{s.id}</td>
+                                    <td style={{ padding: '10px 16px', color: '#0f172a', fontWeight: 500 }}>{s.batch_name || '—'}</td>
                                     <td style={{ padding: '10px 16px', color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.file_match_name || '—'}</td>
                                     <td style={{ padding: '10px 16px', color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.file_beda_name || '—'}</td>
                                     <td style={{ padding: '10px 16px' }}>

@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '../store/authStore'
 
 // ─── Foto Meter Helpers ───────────────────────────────────────────────────────
-const FOTO_MONTHS = 3   // jumlah bulan ke belakang yang ditampilkan
+const FOTO_MONTHS = 6   // jumlah bulan ke belakang yang ditampilkan
 const FOTO_PER_MONTH = 3
 
 function getBlthList() {
@@ -44,6 +44,56 @@ function FotoModal({ foto, onClose }) {
                     style={{ maxWidth: '80vw', maxHeight: '75vh', borderRadius: 6, objectFit: 'contain' }} />}
             </div>
         </div>
+    )
+}
+
+function LatestPhoto({ idpel, blth }) {
+    const [fotoState, setFotoState] = useState({ loading: true, url: null, error: null })
+    const [showFull, setShowFull] = useState(false)
+
+    useEffect(() => {
+        let isMounted = true
+        setFotoState({ loading: true, url: null, error: null })
+        fetch(`/api/foto?idpel=${encodeURIComponent(idpel)}&blth=${blth}&fotoke=1`, { credentials: 'include' })
+            .then(async r => {
+                if (!r.ok) {
+                    const err = await r.json().catch(() => ({}))
+                    throw new Error(err.detail || `HTTP ${r.status}`)
+                }
+                const blob = await r.blob()
+                if (isMounted) setFotoState({ loading: false, url: URL.createObjectURL(blob), error: null })
+            })
+            .catch(e => {
+                if (isMounted) setFotoState({ loading: false, url: null, error: e.message })
+            })
+        return () => { isMounted = false }
+    }, [idpel, blth])
+
+    return (
+        <>
+            <div 
+                onClick={() => fotoState.url && setShowFull(true)}
+                style={{ width: '100%', height: 200, background: '#f8fafc', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16, cursor: fotoState.url ? 'zoom-in' : 'default', position: 'relative' }}
+                title={fotoState.url ? "Klik untuk perbesar" : ""}
+            >
+                {fotoState.loading && <div style={{ fontSize: 11, color: '#94a3b8' }}>Memuat foto terbaru...</div>}
+                {fotoState.error && <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center', padding: 10 }}>{fotoState.error}</div>}
+                {fotoState.url && (
+                    <>
+                        <img src={fotoState.url} alt="Latest" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '4px 8px', borderRadius: 4, fontSize: 10, pointerEvents: 'none' }}>
+                            🔍 Perbesar
+                        </div>
+                    </>
+                )}
+            </div>
+            {showFull && (
+                <FotoModal 
+                    foto={{ idpel, blth, fotoke: 1, url: fotoState.url, loading: false, error: null }} 
+                    onClose={() => setShowFull(false)} 
+                />
+            )}
+        </>
     )
 }
 
@@ -238,7 +288,7 @@ export default function VerifikasiPage() {
     const { user, role } = useAuthStore()
     const qc = useQueryClient()
     const [page, setPage] = useState(1)
-    const [filter, setFilter] = useState({ status: '', search: '', anomalyOnly: false, merekMismatch: false })
+    const [filter, setFilter] = useState({ status: '', search: '', anomalyOnly: false, merekMismatch: false, sessionId: '' })
     const [selected, setSelected] = useState(null)
     const [note, setNote] = useState('')
     const [reasonType, setReasonType] = useState('')
@@ -247,6 +297,11 @@ export default function VerifikasiPage() {
     const [expandedFoto, setExpandedFoto] = useState(null) // idpel yang sedang di-expand
 
     const blthList = getBlthList()
+
+    const { data: sessions = [] } = useQuery({
+        queryKey: ['sessions-list'],
+        queryFn: () => api.get('/api/upload/sessions').then(r => r.data)
+    })
 
     const handleFotoClick = async (idpel, blth, fotoke) => {
         setActiveFoto({ idpel, blth, fotoke, loading: true, url: null, error: null })
@@ -278,7 +333,8 @@ export default function VerifikasiPage() {
                 search: filter.search || undefined,
                 anomaly_only: filter.anomalyOnly,
                 merek_mismatch: filter.merekMismatch,
-                assigned_to: role === 'verifikator' ? user?.id : undefined
+                assigned_to: role === 'verifikator' ? user?.id : undefined,
+                session_id: filter.sessionId || undefined
             }
         }).then(r => r.data),
     })
@@ -307,6 +363,16 @@ export default function VerifikasiPage() {
         setNote(r.catatan || '')
         setReasonType(r.reason_type || '')
         setCorrectedStand(r.corrected_stand ?? '')
+    }
+
+    const navigateModal = (direction) => {
+        if (!selected || records.length === 0) return
+        const idx = records.findIndex(r => r.id === selected.id)
+        if (idx === -1) return
+        const newIdx = idx + direction
+        if (newIdx >= 0 && newIdx < records.length) {
+            openModal(records[newIdx])
+        }
     }
 
     const handleVerify = (status) => {
@@ -346,8 +412,20 @@ export default function VerifikasiPage() {
                         placeholder="Cari ID Pelanggan..."
                         value={filter.search}
                         onChange={e => { setFilter(f => ({ ...f, search: e.target.value })); setPage(1) }}
-                        style={{ ...inputStyle, width: 200 }}
+                        style={{ ...inputStyle, width: 160 }}
                     />
+                    <select
+                        value={filter.sessionId}
+                        onChange={e => { setFilter(f => ({ ...f, sessionId: e.target.value })); setPage(1) }}
+                        style={{ ...inputStyle, paddingLeft: 10, maxWidth: 200 }}
+                    >
+                        <option value="">Semua Sesi</option>
+                        {sessions.map(s => (
+                            <option key={s.id} value={s.id}>
+                                {s.batch_name ? s.batch_name : `Sesi #${s.id}`} ({new Date(s.created_at).toLocaleDateString('id-ID')})
+                            </option>
+                        ))}
+                    </select>
                     <select
                         value={filter.status}
                         onChange={e => { setFilter(f => ({ ...f, status: e.target.value })); setPage(1) }}
@@ -367,18 +445,47 @@ export default function VerifikasiPage() {
             {/* Modal */}
             {selected && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ background: '#fff', borderRadius: 12, padding: 28, width: 580, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
-                        {/* Modal Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-                            <div>
-                                <h2 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Kerjakan Data BEDA</h2>
-                                <p style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>ID Pelanggan: <strong>{selected.id_pelanggan}</strong></p>
+                    <div style={{ background: '#fff', borderRadius: 12, padding: 28, width: 800, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', display: 'flex', gap: 24 }}>
+                        
+                        {/* Kiri: Foto Terbaru */}
+                        <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Foto Terbaru (Bulan {blthList[0]})</div>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                <LatestPhoto idpel={selected.id_pelanggan} blth={blthList[0]} />
                             </div>
-                            <button onClick={() => setSelected(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: 6, width: 28, height: 28, cursor: 'pointer', fontSize: 14, color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                            
+                            {/* Navigasi Next/Prev di bawah foto */}
+                            <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+                                <button 
+                                    onClick={() => navigateModal(-1)}
+                                    disabled={records.findIndex(r => r.id === selected.id) <= 0}
+                                    style={{ flex: 1, padding: '8px 0', border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc', color: '#475569', fontSize: 12, fontWeight: 600, cursor: records.findIndex(r => r.id === selected.id) <= 0 ? 'not-allowed' : 'pointer', opacity: records.findIndex(r => r.id === selected.id) <= 0 ? 0.5 : 1 }}
+                                >
+                                    &larr; Sebelumnya
+                                </button>
+                                <button 
+                                    onClick={() => navigateModal(1)}
+                                    disabled={records.findIndex(r => r.id === selected.id) >= records.length - 1}
+                                    style={{ flex: 1, padding: '8px 0', border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc', color: '#475569', fontSize: 12, fontWeight: 600, cursor: records.findIndex(r => r.id === selected.id) >= records.length - 1 ? 'not-allowed' : 'pointer', opacity: records.findIndex(r => r.id === selected.id) >= records.length - 1 ? 0.5 : 1 }}
+                                >
+                                    Berikutnya &rarr;
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Side-by-side data */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                        {/* Kanan: Form Verifikasi */}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            {/* Modal Header */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                                <div>
+                                    <h2 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Kerjakan Data BEDA</h2>
+                                    <p style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>ID Pelanggan: <strong>{selected.id_pelanggan}</strong></p>
+                                </div>
+                                <button onClick={() => setSelected(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: 6, width: 28, height: 28, cursor: 'pointer', fontSize: 14, color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                            </div>
+
+                            {/* Side-by-side data */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                             {[
                                 { title: 'Hasil AI', bg: '#f8fafc', border: '#e2e8f0', stand: selected.stand_ai, merek: selected.merek_ai, tipe: selected.tipe_ai },
                                 { title: 'Stand Biller', bg: '#fffbeb', border: '#fde68a', stand: selected.stand_petugas, merek: selected.merek_petugas, tipe: selected.tipe_petugas },
@@ -463,7 +570,7 @@ export default function VerifikasiPage() {
                         </div>
 
                         {/* Action buttons */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 'auto' }}>
                             <button onClick={() => handleVerify('VERIFIED_OK')} disabled={verifyMutation.isPending}
                                 style={{ ...btnBase, background: '#16a34a', color: '#fff' }}>✓ Selesai / OK</button>
                             <button onClick={() => handleVerify('NEED_INVESTIGATION')} disabled={verifyMutation.isPending}
@@ -471,6 +578,7 @@ export default function VerifikasiPage() {
                         </div>
                     </div>
                 </div>
+            </div>
             )}
 
             {/* Table */}

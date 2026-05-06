@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.routers.auth import get_current_user
@@ -118,6 +118,7 @@ async def upload_files(
     background_tasks: BackgroundTasks,
     file_match: UploadFile = File(...),
     file_beda: UploadFile = File(...),
+    batch_name: str = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -130,6 +131,7 @@ async def upload_files(
 
     session = UploadSession(
         uploaded_by=current_user.id,
+        batch_name=batch_name,
         file_match_name=file_match.filename,
         file_beda_name=file_beda.filename,
         status="processing"
@@ -153,6 +155,7 @@ def get_sessions(db: Session = Depends(get_db)):
     for s in sessions:
         result.append({
             "id": s.id,
+            "batch_name": s.batch_name,
             "file_match_name": s.file_match_name or s.file_ai_name,
             "file_beda_name":  s.file_beda_name  or s.file_petugas_name,
             "created_at": s.created_at,
@@ -171,6 +174,7 @@ def get_session(session_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
     return {
         "id": s.id,
+        "batch_name": s.batch_name,
         "file_match_name": s.file_match_name or s.file_ai_name,
         "file_beda_name":  s.file_beda_name  or s.file_petugas_name,
         "created_at": s.created_at,
