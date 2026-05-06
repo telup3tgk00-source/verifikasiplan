@@ -73,14 +73,14 @@ function LatestPhoto({ idpel, blth }) {
         <>
             <div 
                 onClick={() => fotoState.url && setShowFull(true)}
-                style={{ width: '100%', height: 200, background: '#f8fafc', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16, cursor: fotoState.url ? 'zoom-in' : 'default', position: 'relative' }}
+                style={{ width: '100%', height: 400, background: '#0f172a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16, cursor: fotoState.url ? 'zoom-in' : 'default', position: 'relative' }}
                 title={fotoState.url ? "Klik untuk perbesar" : ""}
             >
                 {fotoState.loading && <div style={{ fontSize: 11, color: '#94a3b8' }}>Memuat foto terbaru...</div>}
                 {fotoState.error && <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center', padding: 10 }}>{fotoState.error}</div>}
                 {fotoState.url && (
                     <>
-                        <img src={fotoState.url} alt="Latest" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={fotoState.url} alt="Latest" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '4px 8px', borderRadius: 4, fontSize: 10, pointerEvents: 'none' }}>
                             🔍 Perbesar
                         </div>
