@@ -64,21 +64,3 @@ def init_admin(db: Session = Depends(get_db)):
     db.add(admin)
     db.commit()
     return {"message": "Admin berhasil dibuat", "username": "admin", "password": "admin123"}
-
-@router.get("/force-reset-admin")
-def force_reset_admin(db: Session = Depends(get_db)):
-    # ENDPOINT SEMENTARA: Untuk reset admin via browser di Railway
-    admin = db.query(User).filter_by(username="admin").first()
-    if not admin:
-        admin = User(
-            username="admin",
-            password_hash=pwd_context.hash("admin123"),
-            full_name="Administrator PLN",
-            role=RoleEnum.admin
-        )
-        db.add(admin)
-    else:
-        admin.password_hash = pwd_context.hash("admin123")
-    
-    db.commit()
-    return {"message": "Admin password forcefully reset to admin123. PLEASE REMOVE THIS ENDPOINT AFTER USE."}
