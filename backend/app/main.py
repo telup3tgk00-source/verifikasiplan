@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
@@ -50,18 +51,16 @@ def run_migrations():
 
 run_migrations()
 
-is_production = os.getenv("RAILWAY_ENVIRONMENT") is not None
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 app = FastAPI(
     title="PLN KWH Verification API",
     description="Backend untuk sistem verifikasi meter PLN",
     version="1.0.0",
-    docs_url=None if is_production else "/docs",
-    redoc_url=None if is_production else "/redoc",
-    openapi_url=None if is_production else "/openapi.json"
+    docs_url="/docs" if DEBUG else None,
+    redoc_url="/redoc" if DEBUG else None,
+    openapi_url="/openapi.json" if DEBUG else None,
 )
-
-import os
 
 # CORS agar React bisa akses
 origins = [os.getenv("FRONTEND_URL", "http://localhost:5173"), "http://127.0.0.1:5173"]
