@@ -2,7 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, B
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.routers.auth import get_current_user
-from app.models import UploadSession, VerificationRecord, StatusEnum, User
+from app.models import UploadSession, VerificationRecord, StatusEnum, User, RoleEnum
 import pandas as pd
 import io
 
@@ -119,6 +119,7 @@ async def upload_files(
     file_match: UploadFile = File(...),
     file_beda: UploadFile = File(...),
     batch_name: str = Form(None),
+    bulan_verifikasi: str = Form(None),  # format YYYYMM, misal "202605"
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -132,6 +133,7 @@ async def upload_files(
     session = UploadSession(
         uploaded_by=current_user.id,
         batch_name=batch_name,
+        bulan_verifikasi=bulan_verifikasi,
         file_match_name=file_match.filename,
         file_beda_name=file_beda.filename,
         status="processing"
@@ -149,13 +151,19 @@ async def upload_files(
 
 
 @router.get("/sessions")
-def get_sessions(db: Session = Depends(get_db)):
-    sessions = db.query(UploadSession).order_by(UploadSession.created_at.desc()).all()
+def get_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    q = db.query(UploadSession).order_by(UploadSession.created_at.desc())
+    if current_user.role == RoleEnum.verifikator:
+        # Hanya tampilkan sesi yang memiliki minimal 1 record dengan assigned_to == current_user.id
+        q = q.join(VerificationRecord, VerificationRecord.session_id == UploadSession.id)\
+             .filter(VerificationRecord.assigned_to == current_user.id).distinct()
+    sessions = q.all()
     result = []
     for s in sessions:
         result.append({
             "id": s.id,
             "batch_name": s.batch_name,
+            "bulan_verifikasi": s.bulan_verifikasi,
             "file_match_name": s.file_match_name or s.file_ai_name,
             "file_beda_name":  s.file_beda_name  or s.file_petugas_name,
             "created_at": s.created_at,
@@ -175,6 +183,7 @@ def get_session(session_id: int, db: Session = Depends(get_db)):
     return {
         "id": s.id,
         "batch_name": s.batch_name,
+        "bulan_verifikasi": s.bulan_verifikasi,
         "file_match_name": s.file_match_name or s.file_ai_name,
         "file_beda_name":  s.file_beda_name  or s.file_petugas_name,
         "created_at": s.created_at,
@@ -186,7 +195,7 @@ def get_session(session_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/sessions/{session_id}")
-def delete_session(session_id: int, db: Session = Depends(get_db)):
+def delete_session(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     session = db.query(UploadSession).filter_by(id=session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")

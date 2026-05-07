@@ -54,7 +54,8 @@ function LatestPhoto({ idpel, blth }) {
     useEffect(() => {
         let isMounted = true
         setFotoState({ loading: true, url: null, error: null })
-        fetch(`/api/foto?idpel=${encodeURIComponent(idpel)}&blth=${blth}&fotoke=1`, { credentials: 'include' })
+        const token = useAuthStore.getState().token
+        fetch(`/api/foto?idpel=${encodeURIComponent(idpel)}&blth=${blth}&fotoke=1`, { headers: { Authorization: `Bearer ${token}` } })
             .then(async r => {
                 if (!r.ok) {
                     const err = await r.json().catch(() => ({}))
@@ -64,7 +65,10 @@ function LatestPhoto({ idpel, blth }) {
                 if (isMounted) setFotoState({ loading: false, url: URL.createObjectURL(blob), error: null })
             })
             .catch(e => {
-                if (isMounted) setFotoState({ loading: false, url: null, error: e.message })
+                const msg = e.message.includes('401') || e.message.includes('EXPIRED') || e.message.includes('belum diset') 
+                    ? 'Sesi ACMT harus di input ulang' 
+                    : e.message;
+                if (isMounted) setFotoState({ loading: false, url: null, error: msg })
             })
         return () => { isMounted = false }
     }, [idpel, blth])
@@ -143,8 +147,8 @@ function AcmtSessionPanel() {
 
     const loadStatus = async () => {
         try {
-            const r = await fetch('/api/foto/session/status')
-            setStatus(await r.json())
+            const r = await api.get('/api/foto/session/status')
+            setStatus(r.data)
         } catch { setStatus(null) }
     }
 
@@ -163,17 +167,11 @@ function AcmtSessionPanel() {
 
         setSaving(true)
         try {
-            const r = await fetch('/api/foto/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cookie_string: cookieString, set_by: 'admin' })
-            })
-            const data = await r.json()
-            if (!r.ok) throw new Error(data.detail || 'Gagal')
+            await api.post('/api/foto/session', { cookie_string: cookieString, set_by: 'admin' })
             setFields({ JSESSIONID: '', Pool_ACMTJava: '', TS017170f7: '', TS01be508d: '' })
             setShowForm(false)
             await loadStatus()
-        } catch(e) { alert('Gagal menyimpan: ' + e.message) }
+        } catch(e) { alert('Gagal menyimpan: ' + (e.response?.data?.detail || e.message)) }
         finally { setSaving(false) }
     }
 
@@ -301,12 +299,19 @@ export default function VerifikasiPage() {
         queryFn: () => api.get('/api/upload/sessions').then(r => r.data)
     })
 
+    // Tentukan bulan ACMT yang aktif:
+    // 1. Prioritas: bulan_verifikasi dari sesi yang dipilih di filter
+    // 2. Fallback: bulan kalender berjalan (untuk sesi lama yang belum punya bulan_verifikasi)
+    const selectedSession = sessions.find(s => String(s.id) === String(filter.sessionId))
+    const activeBulan = selectedSession?.bulan_verifikasi || blthList[0]
+
     const handleFotoClick = async (idpel, blth, fotoke) => {
         setActiveFoto({ idpel, blth, fotoke, loading: true, url: null, error: null })
         try {
+            const token = useAuthStore.getState().token
             const resp = await fetch(
                 `/api/foto?idpel=${encodeURIComponent(idpel)}&blth=${blth}&fotoke=${fotoke}`,
-                { credentials: 'include' }
+                { headers: { Authorization: `Bearer ${token}` } }
             )
             if (!resp.ok) {
                 const err = await resp.json().catch(() => ({}))
@@ -316,7 +321,11 @@ export default function VerifikasiPage() {
             const url  = URL.createObjectURL(blob)
             setActiveFoto(prev => ({ ...prev, loading: false, url }))
         } catch (e) {
-            setActiveFoto(prev => ({ ...prev, loading: false, error: e.message }))
+            const msg = e.message.includes('401') || e.message.includes('EXPIRED') || e.message.includes('belum diset') 
+                ? 'Sesi ACMT harus di input ulang' 
+                : e.message;
+            setActiveFoto(prev => ({ ...prev, loading: false, error: msg }))
+            if (msg.includes('input ulang')) toast.error(msg)
         }
     }
 
@@ -417,7 +426,7 @@ export default function VerifikasiPage() {
                         onChange={e => { setFilter(f => ({ ...f, sessionId: e.target.value })); setPage(1) }}
                         style={{ ...inputStyle, paddingLeft: 10, maxWidth: 200 }}
                     >
-                        <option value="">Semua Sesi</option>
+                        <option value="">{role === 'verifikator' ? 'Semua Tugas Saya' : 'Semua Sesi'}</option>
                         {sessions.map(s => (
                             <option key={s.id} value={s.id}>
                                 {s.batch_name ? s.batch_name : `Sesi #${s.id}`} ({new Date(s.created_at).toLocaleDateString('id-ID')})
@@ -447,9 +456,17 @@ export default function VerifikasiPage() {
                         
                         {/* Kiri: Foto Terbaru */}
                         <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Foto Terbaru (Bulan {blthList[0]})</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                Foto Terbaru
+                                <span style={{ padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontFamily: 'monospace' }}>
+                                    {activeBulan.slice(0,4)}/{activeBulan.slice(4)}
+                                </span>
+                                {!selectedSession?.bulan_verifikasi && filter.sessionId && (
+                                    <span style={{ fontSize: 10, color: '#d97706' }} title="Batch ini diupload sebelum fitur kunci bulan, menggunakan bulan kalender sebagai fallback">⚠</span>
+                                )}
+                            </div>
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                <LatestPhoto idpel={selected.id_pelanggan} blth={blthList[0]} />
+                                <LatestPhoto idpel={selected.id_pelanggan} blth={activeBulan} />
                             </div>
                             
                             {/* Navigasi Next/Prev di bawah foto */}

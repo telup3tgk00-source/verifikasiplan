@@ -14,6 +14,10 @@ from app.pln_proxy import _session_cache, PHOTO_URL, _BASE_HEADERS
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+from app.routers.auth import get_current_user
+from app.models import User, RoleEnum
+from fastapi import Depends
+
 
 class SessionPayload(BaseModel):
     cookie_string: str   # full cookie: "JSESSIONID=x; TS01be508d=x; ..."
@@ -21,13 +25,13 @@ class SessionPayload(BaseModel):
 
 
 @router.get("/foto/session/status")
-def session_status():
+def session_status(current_user: User = Depends(get_current_user)):
     """Cek status cookie ACMT yang tersimpan."""
     return get_session_status()
 
 
 @router.post("/foto/session")
-def update_session(payload: SessionPayload):
+def update_session(payload: SessionPayload, current_user: User = Depends(get_current_user)):
     """
     Simpan full cookie string dari browser.
     Format: JSESSIONID=xxx; TS01be508d=xxx; Pool_ACMTJava=xxx; TS017170f7=xxx
@@ -72,8 +76,11 @@ async def debug_acmt_response(
     idpel:  str = Query(...),
     blth:   str = Query(...),
     fotoke: str = Query("1"),
+    current_user: User = Depends(get_current_user)
 ):
     """Debug: lihat raw response dari ACMT tanpa filter."""
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Hanya admin yang dapat mengakses debug")
     cookie_string = _session_cache.get("cookie_string", "")
     params  = {"idpel": idpel, "nomor_meter": "null", "fotoke": fotoke, "blth": blth, "isPhoto": "null"}
     headers = {**_BASE_HEADERS, "Cookie": cookie_string}

@@ -56,10 +56,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
+import os
+
 # CORS agar React bisa akses
+origins = [os.getenv("FRONTEND_URL", "http://localhost:5173"), "http://127.0.0.1:5173"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,8 +84,12 @@ app.include_router(settings.router,      prefix="/api/settings",      tags=["Set
 def root():
     return {"message": "PLN KWH Verification API is running"}
 
+from fastapi import Depends
+from app.routers.auth import get_current_user
+from app.models import User
+
 @app.get("/api/dashboard/stats")
-def dashboard_stats():
+def dashboard_stats(current_user: User = Depends(get_current_user)):
     from app.database import SessionLocal
     db = SessionLocal()
     try:

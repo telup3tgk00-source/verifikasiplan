@@ -27,8 +27,8 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="bg-mesh" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="animate-slide-up" style={{ width: 380, position: 'relative', zIndex: 10 }}>
+        <div className="bg-mesh" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
+            <div className="animate-slide-up" style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 10 }}>
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: 16, marginBottom: 20, border: '1px solid rgba(255,255,255,0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
@@ -73,10 +73,6 @@ export default function LoginPage() {
                     </form>
                 </div>
 
-                {/* Hint */}
-                <div className="delay-200 animate-fade-in" style={{ marginTop: 24, padding: '12px', background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(4px)', borderRadius: 8, fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    Default: <span style={{ fontFamily: 'monospace', color: '#fff', fontWeight: 600 }}>admin</span> / <span style={{ fontFamily: 'monospace', color: '#fff', fontWeight: 600 }}>admin123</span>
-                </div>
             </div>
         </div>
     )

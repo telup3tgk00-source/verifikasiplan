@@ -42,6 +42,12 @@ export default function UsersPage() {
         onError: () => toast.error('Gagal menghapus user'),
     })
 
+    const resetPassword = useMutation({
+        mutationFn: ({ id, new_password }) => api.put(`/api/users/${id}/password`, { new_password }),
+        onSuccess: () => toast.success('Password berhasil diubah'),
+        onError: () => toast.error('Gagal mengubah password'),
+    })
+
     const createReason = useMutation({
         mutationFn: (data) => api.post('/api/settings/reasons', data),
         onSuccess: () => {
@@ -153,7 +159,15 @@ export default function UsersPage() {
                                             {u.role}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '12px 16px' }}>
+                                    <td style={{ padding: '12px 16px', display: 'flex', gap: 6 }}>
+                                        <button
+                                            onClick={() => {
+                                                const newPass = prompt(`Masukkan password baru untuk user "${u.username}":`)
+                                                if (newPass) resetPassword.mutate({ id: u.id, new_password: newPass })
+                                            }}
+                                            style={{ background: 'none', color: '#3b82f6', border: '1px solid #bfdbfe', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
+                                            Ubah Sandi
+                                        </button>
                                         {u.username !== 'admin' && (
                                             <button
                                                 onClick={() => { if (confirm(`Hapus user "${u.username}"?`)) deleteUser.mutate(u.id) }}
@@ -177,7 +191,7 @@ export default function UsersPage() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 0.5fr', gap: 14, marginBottom: 16 }}>
                                 <div>
                                     <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Key / Value (unik, tanpa spasi)</label>
-                                    <input placeholder="cth: meter_rusak" type="text" value={reasonForm.value} onChange={e => setReasonForm(f => ({ ...f, value: e.target.value.toLowerCase().replace(/\s/g, '_') }))} style={inputStyle} />
+                                    <input placeholder="cth: meter_rusak" type="text" value={reasonForm.value} onChange={e => setReasonForm(f => ({ ...f, value: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))} style={inputStyle} />
                                 </div>
                                 <div>
                                     <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Label Teks (yang tampil di dropdown)</label>

@@ -39,6 +39,9 @@ class UploadSession(Base):
     id = Column(Integer, primary_key=True, index=True)
     uploaded_by = Column(Integer, ForeignKey("users.id"))
     batch_name = Column(String(200), nullable=True)
+    # Periode ACMT yang dikunci untuk batch ini (format YYYYMM, misal 202605)
+    # Diisi saat upload agar foto ACMT tidak auto-ganti ketika bulan kalender berubah
+    bulan_verifikasi = Column(String(6), nullable=True)
     file_match_name = Column(String(200), nullable=True)
     file_beda_name = Column(String(200), nullable=True)
     # Legacy compat (kept for existing rows)

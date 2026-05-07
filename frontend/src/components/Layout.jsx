@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import NotificationBell from './NotificationBell'
@@ -16,6 +17,7 @@ export default function Layout() {
     const { fullName, role, logout } = useAuthStore()
     const navigate = useNavigate()
     const location = useLocation()
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
     function handleLogout() {
         if (window.confirm('Apakah Anda yakin ingin keluar?')) {
@@ -29,8 +31,13 @@ export default function Layout() {
 
     return (
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+            {/* Mobile Backdrop */}
+            {isSidebarOpen && (
+                <div onClick={() => setIsSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9 }}></div>
+            )}
+            
             {/* Sidebar */}
-            <div className="sidebar" style={{ width: 'var(--sidebar-w)', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
+            <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`} style={{ width: 'var(--sidebar-w)', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
                 <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                         <div style={{ width: 24, height: 24, background: 'linear-gradient(135deg, var(--primary), var(--accent))', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -48,6 +55,7 @@ export default function Layout() {
                             <NavLink
                                 key={item.to} to={item.to}
                                 end={item.exact}
+                                onClick={() => setIsSidebarOpen(false)}
                                 className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                                 style={{ borderRadius: 6 }}
                             >
@@ -72,8 +80,11 @@ export default function Layout() {
             {/* Main */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
                 {/* Topbar */}
-                <div className="topbar-glass" style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', flexShrink: 0, position: 'sticky', top: 0, zIndex: 20 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: '#1e293b', letterSpacing: '-0.2px' }}>{activeLabel}</div>
+                <div className="topbar-glass" style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', flexShrink: 0, position: 'sticky', top: 0, zIndex: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <button className="mobile-menu-btn" onClick={() => setIsSidebarOpen(true)}>☰</button>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: '#1e293b', letterSpacing: '-0.2px' }}>{activeLabel}</div>
+                    </div>
                     <NotificationBell />
                 </div>
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import VerificationRecord, AuditLog, StatusEnum
+from app.models import VerificationRecord, AuditLog, StatusEnum, User
 from app.schemas import RecordOut, RecordUpdate
 from typing import List, Optional
 from datetime import datetime
@@ -13,6 +13,7 @@ router = APIRouter()
 @router.get("/", response_model=List[RecordOut])
 def get_records(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     session_id: Optional[int] = None,
     status: Optional[str] = None,
     assigned_to: Optional[int] = None,
@@ -28,7 +29,10 @@ def get_records(
         q = q.filter(VerificationRecord.session_id == session_id)
     if status:
         q = q.filter(VerificationRecord.status == status)
-    if assigned_to:
+    from app.models import RoleEnum
+    if current_user.role == RoleEnum.verifikator:
+        q = q.filter(VerificationRecord.assigned_to == current_user.id)
+    elif assigned_to:
         q = q.filter(VerificationRecord.assigned_to == assigned_to)
     if search:
         q = q.filter(VerificationRecord.id_pelanggan.contains(search))
@@ -82,7 +86,7 @@ def update_record(record_id: int, req: RecordUpdate, db: Session = Depends(get_d
     return record
 
 @router.get("/stats/summary")
-def get_summary(session_id: Optional[int] = None, db: Session = Depends(get_db)):
+def get_summary(session_id: Optional[int] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     q = db.query(VerificationRecord).filter_by(is_deleted=False)
     if session_id:
         q = q.filter(VerificationRecord.session_id == session_id)

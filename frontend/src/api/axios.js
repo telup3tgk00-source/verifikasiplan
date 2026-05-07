@@ -14,9 +14,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     res => res,
     err => {
-        if (err.response?.status === 401) {
+        if (!err.response) {
+            // Server down atau tidak ada koneksi
+            import('sonner').then(({ toast }) => {
+                toast.error('Gagal terhubung ke server. Periksa koneksi atau pastikan server aktif.')
+            })
+        } else if (err.response?.status === 401) {
             useAuthStore.getState().logout()
-            window.location.href = '/login'
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login'
+            }
         }
         return Promise.reject(err)
     }

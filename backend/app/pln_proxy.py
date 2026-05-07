@@ -99,7 +99,7 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str) -> tuple[bytes, str]:
     )
 
     # ─── Sukses: response adalah gambar ───────────────────────────────────────
-    if status_code == 200 and (
+    if status_code == 200 and len(resp.content) > 0 and (
         content_type.startswith("image/")
         or content_type == "application/octet-stream"
     ):
@@ -124,6 +124,13 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str) -> tuple[bytes, str]:
         raise RuntimeError(
             "SESSION_EXPIRED: Cookie ACMT sudah kadaluarsa. "
             "Login ulang di browser dan update cookie di panel Sesi ACMT."
+        )
+
+    # ─── Server Error ─────────────────────────────────────────────────────────
+    if status_code >= 500:
+        raise RuntimeError(
+            f"Server ACMT Error (HTTP {status_code}): "
+            f"(idpel={idpel} blth={blth} fotoke={fotoke})"
         )
 
     # ─── HTML → halaman login atau error ──────────────────────────────────────
