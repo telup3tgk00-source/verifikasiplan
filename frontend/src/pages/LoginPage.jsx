@@ -36,8 +36,10 @@ export default function LoginPage() {
             <div className="animate-slide-up" style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 10 }}>
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                    <img src={logoImg} alt="METRIK" style={{ height: 64, width: 'auto', objectFit: 'contain', marginBottom: 12 }} />
-                    <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', margin: 0 }}>Sistem Verifikasi Meter KWH</p>
+                    <div style={{ background: '#ffffff', padding: '16px 24px', borderRadius: '12px', display: 'inline-block', marginBottom: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
+                        <img src={logoImg} alt="METRIK" style={{ height: 60, width: 'auto', objectFit: 'contain', display: 'block' }} />
+                    </div>
+                    <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', margin: 0, fontWeight: 500, letterSpacing: '0.5px' }}>Sistem Verifikasi Meter KWH</p>
                 </div>
 
                 {/* Card */}

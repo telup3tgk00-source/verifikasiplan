@@ -41,8 +41,10 @@ export default function Layout() {
             <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`} style={{ width: 'var(--sidebar-w)', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
                 <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <img src={logoImg} alt="METRIK" style={{ height: 40, width: 'auto', objectFit: 'contain', marginBottom: 8 }} />
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.5px', textTransform: 'uppercase', textAlign: 'center' }}>Sistem Verifikasi Meter KWH</div>
+                        <div style={{ background: '#ffffff', padding: '10px 16px', borderRadius: '8px', marginBottom: '12px', width: '100%', boxSizing: 'border-box', display: 'flex', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                            <img src={logoImg} alt="METRIK" style={{ height: 42, width: 'auto', objectFit: 'contain', display: 'block' }} />
+                        </div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', textTransform: 'uppercase', textAlign: 'center', fontWeight: 500 }}>Sistem Verifikasi Meter KWH</div>
                     </div>
                 </div>
 
@@ -86,8 +88,13 @@ export default function Layout() {
                     <NotificationBell />
                 </div>
 
-                <div className="animate-fade-in" style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
-                    <Outlet />
+                <div className="animate-fade-in" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ padding: 28, flex: 1 }}>
+                        <Outlet />
+                    </div>
+                    <footer style={{ padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 12, textAlign: 'center', flexShrink: 0 }}>
+                        &copy; {new Date().getFullYear()} METRIK &mdash; Sistem Verifikasi Meter KWH. All rights reserved.
+                    </footer>
                 </div>
             </div>
         </div>
