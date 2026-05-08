@@ -98,3 +98,37 @@ async def debug_acmt_response(
         "magic_bytes_hex": resp.content[:8].hex() if resp.content else "",
         "cookie_keys_sent": [p.split("=")[0].strip() for p in cookie_string.split(";") if "=" in p],
     }
+
+
+@router.get("/foto/debug-proxy")
+async def debug_proxy(current_user: User = Depends(get_current_user)):
+    """Debug: test proxy connection to ACMT."""
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Hanya admin yang dapat mengakses debug")
+    
+    cookie_string = _session_cache.get("cookie_string", "")
+    cookie_set = bool(cookie_string)
+    cookie_preview = cookie_string[:20] if cookie_set else ""
+    
+    # Test reachability
+    dapat_reach_acmt = False
+    test_response_status = None
+    test_content_type = None
+    
+    try:
+        async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
+            resp = await client.head("https://portalapp.iconpln.co.id/acmt/Main.htm", headers=_BASE_HEADERS)
+            dapat_reach_acmt = True
+            test_response_status = resp.status_code
+            test_content_type = resp.headers.get("content-type")
+    except Exception as e:
+        logger.error(f"Cannot reach ACMT: {e}")
+        
+    return {
+        "cookie_set": cookie_set,
+        "cookie_preview": cookie_preview,
+        "dapat_reach_acmt": dapat_reach_acmt,
+        "test_response_status": test_response_status,
+        "test_content_type": test_content_type
+    }
+

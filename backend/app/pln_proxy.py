@@ -64,6 +64,11 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str) -> tuple[bytes, str]:
     Forward SEMUA cookie yang disimpan ke ICONPLN.
     """
     cookie_string = _session_cache.get("cookie_string")
+    
+    print(f"[FOTO] idpel={idpel} blth={blth} fotoke={fotoke}")
+    print(f"[FOTO] Cookie cache isi: {list(_session_cache.keys())}")
+    print(f"[FOTO] Cookie value ada: {bool(cookie_string)}")
+    
     if not cookie_string:
         raise RuntimeError(
             "Cookie ACMT belum diset. "
@@ -92,6 +97,10 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str) -> tuple[bytes, str]:
 
     content_type = resp.headers.get("content-type", "").lower()
     status_code  = resp.status_code
+
+    print(f"[FOTO] Response status dari ACMT: {status_code}")
+    print(f"[FOTO] Content-type: {resp.headers.get('content-type')}")
+    print(f"[FOTO] Response size: {len(resp.content)} bytes")
 
     logger.info(
         "ACMT [%d] ct=%s size=%d — idpel=%s blth=%s fotoke=%s",
