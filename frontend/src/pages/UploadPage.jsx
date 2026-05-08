@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../api/axios'
 import { toast } from 'sonner'
@@ -7,6 +7,8 @@ import { useAuthStore } from '../store/authStore'
 const inputStyle = { width: '100%', height: 36, padding: '0 11px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, outline: 'none', boxSizing: 'border-box', color: '#1e293b' }
 
 export default function UploadPage() {
+    useEffect(() => { document.title = "Upload | METRIK" }, [])
+
     const { role } = useAuthStore()
     const qc = useQueryClient()
     const [fileMatch, setFileMatch] = useState(null)

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import NotificationBell from './NotificationBell'
+import logoImg from '../assets/logo.png'
 
 const navItems = [
     { to: '/', label: 'Dashboard', exact: true },
@@ -39,13 +40,10 @@ export default function Layout() {
             {/* Sidebar */}
             <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`} style={{ width: 'var(--sidebar-w)', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
                 <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <div style={{ width: 24, height: 24, background: 'linear-gradient(135deg, var(--primary), var(--accent))', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <div style={{ width: 10, height: 10, border: '2px solid white', borderRadius: 2 }}></div>
-                        </div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>PLN Verifikasi</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src={logoImg} alt="METRIK" style={{ height: 40, width: 'auto', objectFit: 'contain', marginBottom: 8 }} />
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.5px', textTransform: 'uppercase', textAlign: 'center' }}>Sistem Verifikasi Meter KWH</div>
                     </div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.5px', textTransform: 'uppercase', paddingLeft: 34 }}>Sistem Meter KWH</div>
                 </div>
 
                 <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>

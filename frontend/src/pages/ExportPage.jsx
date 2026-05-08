@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../api/axios'
 import { toast } from 'sonner'
@@ -7,6 +7,8 @@ import { useAuthStore } from '../store/authStore'
 const selectStyle = { width: '100%', height: 36, padding: '0 11px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, outline: 'none', color: '#1e293b', boxSizing: 'border-box' }
 
 export default function ExportPage() {
+    useEffect(() => { document.title = "Export | METRIK" }, [])
+
     const { role } = useAuthStore()
     const [loading, setLoading] = useState(false)
     const [filter, setFilter] = useState({ status: '', session_id: '', record_type: '' })

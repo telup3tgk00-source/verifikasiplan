@@ -276,6 +276,8 @@ function AcmtSessionPanel() {
 }
 
 export default function VerifikasiPage() {
+    useEffect(() => { document.title = "Verifikasi Data | METRIK" }, [])
+
     const { user, role } = useAuthStore()
     const qc = useQueryClient()
 

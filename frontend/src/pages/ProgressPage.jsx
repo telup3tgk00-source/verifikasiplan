@@ -1,7 +1,10 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../api/axios'
 
 export default function ProgressPage() {
+    useEffect(() => { document.title = "Progres Operator | METRIK" }, [])
+
     const { data: stats, isLoading } = useQuery({
         queryKey: ['progress-detail'],
         queryFn: () => api.get('/api/dashboard/stats').then(r => r.data),

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../api/axios'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
@@ -16,6 +17,8 @@ function StatCard({ label, value, color, subtext }) {
 }
 
 export default function Dashboard() {
+    useEffect(() => { document.title = "Dashboard | METRIK" }, [])
+
     const { data: stats, isLoading } = useQuery({
         queryKey: ['dashboard-stats'],
         queryFn: () => api.get('/api/dashboard/stats').then(r => r.data),

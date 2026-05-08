@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import api from '../api/axios'
 import { toast } from 'sonner'
+import logoImg from '../assets/logo.png'
 
 export default function LoginPage() {
     const [username, setUsername] = useState('')
@@ -10,6 +11,10 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false)
     const { setAuth } = useAuthStore()
     const navigate = useNavigate()
+
+    useEffect(() => {
+        document.title = "Login | METRIK"
+    }, [])
 
     async function handleLogin(e) {
         e.preventDefault()
@@ -31,10 +36,7 @@ export default function LoginPage() {
             <div className="animate-slide-up" style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 10 }}>
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: 16, marginBottom: 20, border: '1px solid rgba(255,255,255,0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
-                        <div style={{ width: 24, height: 24, border: '3px solid #60a5fa', borderRadius: 4, transform: 'rotate(15deg)' }} />
-                    </div>
-                    <h1 style={{ fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px', margin: '0 0 8px', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>PLN Verification</h1>
+                    <img src={logoImg} alt="METRIK" style={{ height: 64, width: 'auto', objectFit: 'contain', marginBottom: 12 }} />
                     <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', margin: 0 }}>Sistem Verifikasi Meter KWH</p>
                 </div>
 
