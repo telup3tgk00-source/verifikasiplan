@@ -145,7 +145,7 @@ export default function UploadPage() {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+                <div className="grid-upload">
                     {slots.map(({ label, desc, ref, set, val, color }) => (
                         <div key={label}
                             onClick={() => ref.current.click()}
@@ -189,61 +189,63 @@ export default function UploadPage() {
                 {!sessions.length ? (
                     <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Belum ada sesi upload.</div>
                 ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                        <thead>
-                            <tr style={{ background: '#f8fafc' }}>
-                                {['Sesi', 'Nama Batch', 'Bulan Verif', 'File MATCH', 'File BEDA', 'Match', 'Beda', 'Total', 'Status', ''].map(h => (
-                                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sessions.map(s => (
-                                <tr key={s.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0f172a' }}>#{s.id}</td>
-                                    <td style={{ padding: '10px 16px', color: '#0f172a', fontWeight: 500 }}>{s.batch_name || '—'}</td>
-                                    <td style={{ padding: '10px 16px' }}>
-                                        {s.bulan_verifikasi ? (
-                                            <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontFamily: 'monospace' }}>
-                                                {s.bulan_verifikasi.slice(0,4)}/{s.bulan_verifikasi.slice(4)}
-                                            </span>
-                                        ) : <span style={{ color: '#cbd5e1' }}>—</span>}
-                                    </td>
-                                    <td style={{ padding: '10px 16px', color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.file_match_name || '—'}</td>
-                                    <td style={{ padding: '10px 16px', color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.file_beda_name || '—'}</td>
-                                    <td style={{ padding: '10px 16px' }}>
-                                        <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
-                                            {s.total_match?.toLocaleString() ?? '—'}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '10px 16px' }}>
-                                        <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
-                                            {s.total_beda?.toLocaleString() ?? '—'}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '10px 16px', color: '#374151' }}>{s.total_records?.toLocaleString() || '—'}</td>
-                                    <td style={{ padding: '10px 16px' }}>
-                                        <span style={{
-                                            padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 500,
-                                            background: s.status === 'done' ? '#f0fdf4' : s.status === 'processing' ? '#fffbeb' : '#fef2f2',
-                                            color: s.status === 'done' ? '#16a34a' : s.status === 'processing' ? '#d97706' : '#dc2626',
-                                            border: `1px solid ${s.status === 'done' ? '#bbf7d0' : s.status === 'processing' ? '#fde68a' : '#fecaca'}`
-                                        }}>
-                                            {s.status === 'done' ? 'Selesai' : s.status === 'processing' ? 'Diproses' : s.status}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '10px 16px' }}>
-                                        <button
-                                            onClick={() => { if (confirm('Hapus sesi ini? Data record akan dihapus.')) deleteSession.mutate(s.id) }}
-                                            style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}
-                                        >
-                                            Hapus
-                                        </button>
-                                    </td>
+                    <div className="table-responsive">
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <thead>
+                                <tr style={{ background: '#f8fafc' }}>
+                                    {['Sesi', 'Nama Batch', 'Bulan Verif', 'File MATCH', 'File BEDA', 'Match', 'Beda', 'Total', 'Status', ''].map(h => (
+                                        <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
+                                    ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {sessions.map(s => (
+                                    <tr key={s.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0f172a' }}>#{s.id}</td>
+                                        <td style={{ padding: '10px 16px', color: '#0f172a', fontWeight: 500 }}>{s.batch_name || '—'}</td>
+                                        <td style={{ padding: '10px 16px' }}>
+                                            {s.bulan_verifikasi ? (
+                                                <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontFamily: 'monospace' }}>
+                                                    {s.bulan_verifikasi.slice(0,4)}/{s.bulan_verifikasi.slice(4)}
+                                                </span>
+                                            ) : <span style={{ color: '#cbd5e1' }}>—</span>}
+                                        </td>
+                                        <td style={{ padding: '10px 16px', color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.file_match_name || '—'}</td>
+                                        <td style={{ padding: '10px 16px', color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.file_beda_name || '—'}</td>
+                                        <td style={{ padding: '10px 16px' }}>
+                                            <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
+                                                {s.total_match?.toLocaleString() ?? '—'}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '10px 16px' }}>
+                                            <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
+                                                {s.total_beda?.toLocaleString() ?? '—'}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '10px 16px', color: '#374151' }}>{s.total_records?.toLocaleString() || '—'}</td>
+                                        <td style={{ padding: '10px 16px' }}>
+                                            <span style={{
+                                                padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 500,
+                                                background: s.status === 'done' ? '#f0fdf4' : s.status === 'processing' ? '#fffbeb' : '#fef2f2',
+                                                color: s.status === 'done' ? '#16a34a' : s.status === 'processing' ? '#d97706' : '#dc2626',
+                                                border: `1px solid ${s.status === 'done' ? '#bbf7d0' : s.status === 'processing' ? '#fde68a' : '#fecaca'}`
+                                            }}>
+                                                {s.status === 'done' ? 'Selesai' : s.status === 'processing' ? 'Diproses' : s.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '10px 16px' }}>
+                                            <button
+                                                onClick={() => { if (confirm('Hapus sesi ini? Data record akan dihapus.')) deleteSession.mutate(s.id) }}
+                                                style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}
+                                            >
+                                                Hapus
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
         </div>

@@ -46,7 +46,7 @@ export default function Dashboard() {
             </div>
 
             {/* Stat Cards */}
-            <div className="animate-slide-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+            <div className="animate-slide-up grid-stats">
                 <StatCard label="Total Data" value={stats?.total || 0} subtext="Semua sesi aktif" color="#3b82f6" />
                 <StatCard label="Selesai" value={totalDone} color="#10b981" subtext={`${stats?.progress_pct || 0}% dari total`} />
                 <StatCard label="Pending" value={stats?.pending || 0} color="#f59e0b" subtext="Menunggu verifikator" />
@@ -54,7 +54,7 @@ export default function Dashboard() {
             </div>
 
             {/* Charts */}
-            <div className="animate-slide-up delay-100" style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16, marginBottom: 24 }}>
+            <div className="animate-slide-up delay-100 grid-charts">
                 {/* Bar Chart */}
                 <div className="card-hover" style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Progres Per Sesi</div>
@@ -122,35 +122,37 @@ export default function Dashboard() {
                 {!sessions?.length ? (
                     <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Belum ada data upload.</div>
                 ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                        <thead>
-                            <tr style={{ background: '#f8fafc' }}>
-                                {['Sesi', 'Nama Batch', 'Waktu Upload', 'Total Record', 'Status'].map(h => (
-                                    <th key={h} style={{ padding: '10px 20px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sessions.slice(0, 5).map(s => (
-                                <tr key={s.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '12px 20px', fontWeight: 600, color: '#0f172a' }}>#{s.id}</td>
-                                    <td style={{ padding: '12px 20px', color: '#0f172a', fontWeight: 500 }}>{s.batch_name || '—'}</td>
-                                    <td style={{ padding: '12px 20px', color: '#64748b' }}>{new Date(s.created_at).toLocaleString('id-ID')}</td>
-                                    <td style={{ padding: '12px 20px', color: '#374151' }}>{s.total_records?.toLocaleString() || '—'}</td>
-                                    <td style={{ padding: '12px 20px' }}>
-                                        <span style={{
-                                            padding: '3px 10px', borderRadius: 4, fontSize: 11, fontWeight: 500,
-                                            background: s.status === 'done' ? '#f0fdf4' : s.status === 'processing' ? '#fffbeb' : '#fef2f2',
-                                            color: s.status === 'done' ? '#16a34a' : s.status === 'processing' ? '#d97706' : '#dc2626',
-                                            border: `1px solid ${s.status === 'done' ? '#bbf7d0' : s.status === 'processing' ? '#fde68a' : '#fecaca'}`
-                                        }}>
-                                            {s.status === 'done' ? 'Selesai' : s.status === 'processing' ? 'Diproses' : s.status}
-                                        </span>
-                                    </td>
+                    <div className="table-responsive">
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <thead>
+                                <tr style={{ background: '#f8fafc' }}>
+                                    {['Sesi', 'Nama Batch', 'Waktu Upload', 'Total Record', 'Status'].map(h => (
+                                        <th key={h} style={{ padding: '10px 20px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
+                                    ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {sessions.slice(0, 5).map(s => (
+                                    <tr key={s.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '12px 20px', fontWeight: 600, color: '#0f172a' }}>#{s.id}</td>
+                                        <td style={{ padding: '12px 20px', color: '#0f172a', fontWeight: 500 }}>{s.batch_name || '—'}</td>
+                                        <td style={{ padding: '12px 20px', color: '#64748b' }}>{new Date(s.created_at).toLocaleString('id-ID')}</td>
+                                        <td style={{ padding: '12px 20px', color: '#374151' }}>{s.total_records?.toLocaleString() || '—'}</td>
+                                        <td style={{ padding: '12px 20px' }}>
+                                            <span style={{
+                                                padding: '3px 10px', borderRadius: 4, fontSize: 11, fontWeight: 500,
+                                                background: s.status === 'done' ? '#f0fdf4' : s.status === 'processing' ? '#fffbeb' : '#fef2f2',
+                                                color: s.status === 'done' ? '#16a34a' : s.status === 'processing' ? '#d97706' : '#dc2626',
+                                                border: `1px solid ${s.status === 'done' ? '#bbf7d0' : s.status === 'processing' ? '#fde68a' : '#fecaca'}`
+                                            }}>
+                                                {s.status === 'done' ? 'Selesai' : s.status === 'processing' ? 'Diproses' : s.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
         </div>

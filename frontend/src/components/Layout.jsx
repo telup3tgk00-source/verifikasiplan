@@ -39,7 +39,8 @@ export default function Layout() {
             
             {/* Sidebar */}
             <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`} style={{ width: 'var(--sidebar-w)', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
-                <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'relative' }}>
+                    <button className="sidebar-close-btn" onClick={() => setIsSidebarOpen(false)} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 20, cursor: 'pointer', padding: 4 }}>✕</button>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                         <img src={logoImg} alt="Logo" style={{ height: 80, width: 'auto', objectFit: 'contain', display: 'block', marginBottom: 8 }} />
                         <div style={{ fontSize: 18, fontWeight: 'bold', color: '#ffffff', letterSpacing: '1px', marginBottom: 4 }}>METRIK</div>

@@ -78,7 +78,7 @@ export default function AssignmentPage() {
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Bagi data <strong style={{ color: '#dc2626' }}>BEDA</strong> ke petugas untuk dikerjakan manual</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20, alignItems: 'start' }}>
+            <div className="grid-assignment">
                 {/* Config panel */}
                 <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: 24 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 20 }}>Konfigurasi Pembagian</div>
@@ -117,7 +117,7 @@ export default function AssignmentPage() {
 
                     {/* Conditional inputs */}
                     {method === 'range' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                        <div className="grid-upload" style={{ marginBottom: 20 }}>
                             <div>
                                 <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5 }}>Dari ID</label>
                                 <input value={rangeStart} onChange={e => setRangeStart(e.target.value)} placeholder="171000" style={inputStyle} />
@@ -144,7 +144,7 @@ export default function AssignmentPage() {
                         {verifikators.length === 0 ? (
                             <div style={{ padding: 16, background: '#f8fafc', borderRadius: 7, fontSize: 12, color: '#94a3b8', border: '1px solid #e2e8f0' }}>Belum ada verifikator. Tambahkan di menu Kelola Akun.</div>
                         ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+                            <div className="grid-upload" style={{ maxHeight: 180, overflowY: 'auto', gap: 6 }}>
                                 {verifikators.map(u => (
                                     <div key={u.id} onClick={() => toggleOp(u.id)}
                                         style={{

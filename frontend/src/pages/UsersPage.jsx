@@ -100,7 +100,7 @@ export default function UsersPage() {
             {showForm && (
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 24, marginBottom: 20 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 16 }}>User Baru</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+                    <div className="grid-upload">
                         {[['username', 'Username', 'text'], ['password', 'Password', 'password'], ['full_name', 'Nama Lengkap', 'text']].map(([key, label, type]) => (
                             <div key={key}>
                                 <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>{label}</label>
@@ -138,50 +138,52 @@ export default function UsersPage() {
                 {isLoading ? (
                     <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Memuat...</div>
                 ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                        <thead>
-                            <tr style={{ background: '#f8fafc' }}>
-                                {['Nama Lengkap', 'Username', 'Role', ''].map(h => (
-                                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {users.map(u => (
-                                <tr key={u.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a' }}>{u.full_name}</td>
-                                    <td style={{ padding: '12px 16px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{u.username}</td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                        <span style={{
-                                            padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 500,
-                                            background: u.role === 'admin' ? '#eff6ff' : u.role === 'supervisor' ? '#fdf4ff' : '#f0fdf4',
-                                            color: u.role === 'admin' ? '#1d4ed8' : u.role === 'supervisor' ? '#7c3aed' : '#16a34a',
-                                            border: `1px solid ${u.role === 'admin' ? '#bfdbfe' : u.role === 'supervisor' ? '#e9d5ff' : '#bbf7d0'}`
-                                        }}>
-                                            {u.role}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '12px 16px', display: 'flex', gap: 6 }}>
-                                        <button
-                                            onClick={() => {
-                                                const newPass = prompt(`Masukkan password baru untuk user "${u.username}":`)
-                                                if (newPass) resetPassword.mutate({ id: u.id, new_password: newPass })
-                                            }}
-                                            style={{ background: 'none', color: '#3b82f6', border: '1px solid #bfdbfe', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
-                                            Ubah Sandi
-                                        </button>
-                                        {u.username !== 'admin' && (
-                                            <button
-                                                onClick={() => { if (confirm(`Hapus user "${u.username}"?`)) deleteUser.mutate(u.id) }}
-                                                style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
-                                                Hapus
-                                            </button>
-                                        )}
-                                    </td>
+                    <div className="table-responsive">
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <thead>
+                                <tr style={{ background: '#f8fafc' }}>
+                                    {['Nama Lengkap', 'Username', 'Role', ''].map(h => (
+                                        <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
+                                    ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {users.map(u => (
+                                    <tr key={u.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a' }}>{u.full_name}</td>
+                                        <td style={{ padding: '12px 16px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{u.username}</td>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            <span style={{
+                                                padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 500,
+                                                background: u.role === 'admin' ? '#eff6ff' : u.role === 'supervisor' ? '#fdf4ff' : '#f0fdf4',
+                                                color: u.role === 'admin' ? '#1d4ed8' : u.role === 'supervisor' ? '#7c3aed' : '#16a34a',
+                                                border: `1px solid ${u.role === 'admin' ? '#bfdbfe' : u.role === 'supervisor' ? '#e9d5ff' : '#bbf7d0'}`
+                                            }}>
+                                                {u.role}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '12px 16px', display: 'flex', gap: 6 }}>
+                                            <button
+                                                onClick={() => {
+                                                    const newPass = prompt(`Masukkan password baru untuk user "${u.username}":`)
+                                                    if (newPass) resetPassword.mutate({ id: u.id, new_password: newPass })
+                                                }}
+                                                style={{ background: 'none', color: '#3b82f6', border: '1px solid #bfdbfe', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
+                                                Ubah Sandi
+                                            </button>
+                                            {u.username !== 'admin' && (
+                                                <button
+                                                    onClick={() => { if (confirm(`Hapus user "${u.username}"?`)) deleteUser.mutate(u.id) }}
+                                                    style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
+                                                    Hapus
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
                 </>
@@ -190,7 +192,7 @@ export default function UsersPage() {
                     {showReasonForm && (
                         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 24, marginBottom: 20 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 16 }}>Opsi Alasan Baru</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 0.5fr', gap: 14, marginBottom: 16 }}>
+                            <div className="grid-upload-3">
                                 <div>
                                     <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Key / Value (unik, tanpa spasi)</label>
                                     <input placeholder="cth: meter_rusak" type="text" value={reasonForm.value} onChange={e => setReasonForm(f => ({ ...f, value: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))} style={inputStyle} />
@@ -221,34 +223,36 @@ export default function UsersPage() {
                         {isLoadingReasons ? (
                             <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Memuat...</div>
                         ) : (
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                                <thead>
-                                    <tr style={{ background: '#f8fafc' }}>
-                                        {['Urutan', 'Key Value', 'Label Teks', 'Status', ''].map(h => (
-                                            <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {reasons.map(r => (
-                                        <tr key={r.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                            <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a', width: 60, textAlign: 'center' }}>{r.sort_order}</td>
-                                            <td style={{ padding: '12px 16px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{r.value}</td>
-                                            <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a' }}>{r.label}</td>
-                                            <td style={{ padding: '12px 16px' }}>
-                                                <span style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: r.is_active ? '#f0fdf4' : '#f1f5f9', color: r.is_active ? '#16a34a' : '#64748b', border: `1px solid ${r.is_active ? '#bbf7d0' : '#e2e8f0'}` }}>
-                                                    {r.is_active ? 'Aktif' : 'Nonaktif'}
-                                                </span>
-                                            </td>
-                                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                                <button onClick={() => { if (confirm(`Hapus alasan "${r.label}"?`)) deleteReason.mutate(r.id) }} style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
-                                                    Hapus
-                                                </button>
-                                            </td>
+                            <div className="table-responsive">
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                    <thead>
+                                        <tr style={{ background: '#f8fafc' }}>
+                                            {['Urutan', 'Key Value', 'Label Teks', 'Status', ''].map(h => (
+                                                <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
+                                            ))}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {reasons.map(r => (
+                                            <tr key={r.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                                <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a', width: 60, textAlign: 'center' }}>{r.sort_order}</td>
+                                                <td style={{ padding: '12px 16px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{r.value}</td>
+                                                <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a' }}>{r.label}</td>
+                                                <td style={{ padding: '12px 16px' }}>
+                                                    <span style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: r.is_active ? '#f0fdf4' : '#f1f5f9', color: r.is_active ? '#16a34a' : '#64748b', border: `1px solid ${r.is_active ? '#bbf7d0' : '#e2e8f0'}` }}>
+                                                        {r.is_active ? 'Aktif' : 'Nonaktif'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                                    <button onClick={() => { if (confirm(`Hapus alasan "${r.label}"?`)) deleteReason.mutate(r.id) }} style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
+                                                        Hapus
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </>

@@ -33,7 +33,7 @@ export default function LoginPage() {
 
     return (
         <div className="bg-mesh" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
-            <div className="animate-slide-up" style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 10 }}>
+            <div className="animate-slide-up login-card-wrapper">
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
                     <img src={logoImg} alt="Logo" style={{ height: 120, width: 'auto', objectFit: 'contain', display: 'block', margin: '0 auto 12px' }} />

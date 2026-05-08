@@ -27,7 +27,7 @@ function FotoModal({ foto, onClose }) {
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200,
                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}
         >
-            <div onClick={e => e.stopPropagation()}
+            <div onClick={e => e.stopPropagation()} className="photo-modal-view"
                  style={{ background: '#1e293b', borderRadius: 10, padding: 16, maxWidth: '90vw', maxHeight: '90vh',
                           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
@@ -408,7 +408,7 @@ export default function VerifikasiPage() {
                     <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.4px', margin: 0 }}>Verifikasi Data BEDA</h1>
                     <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Kerjakan data yang AI ≠ Biller — isi alasan dan koreksi jika perlu</p>
                 </div>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <div className="flex-filter">
                     <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#64748b', cursor: 'pointer', userSelect: 'none' }}>
                         <input type="checkbox" checked={filter.anomalyOnly} onChange={e => setFilter(f => ({ ...f, anomalyOnly: e.target.checked }))} style={{ accentColor: '#3b82f6' }} />
                         Anomali
@@ -454,10 +454,10 @@ export default function VerifikasiPage() {
             {/* Modal */}
             {selected && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ background: '#fff', borderRadius: 12, padding: 28, width: 800, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', display: 'flex', gap: 24 }}>
+                    <div className="photo-modal-content">
                         
                         {/* Kiri: Foto Terbaru */}
-                        <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                        <div className="photo-modal-left">
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                                 Foto Terbaru
                                 <span style={{ padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontFamily: 'monospace' }}>
@@ -502,7 +502,7 @@ export default function VerifikasiPage() {
                             </div>
 
                             {/* Side-by-side data */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                            <div className="grid-upload" style={{ marginBottom: 16 }}>
                             {[
                                 { title: 'Hasil AI', bg: '#f8fafc', border: '#e2e8f0', stand: selected.stand_ai, merek: selected.merek_ai, tipe: selected.tipe_ai },
                                 { title: 'Stand Biller', bg: '#fffbeb', border: '#fde68a', stand: selected.stand_petugas, merek: selected.merek_petugas, tipe: selected.tipe_petugas },
@@ -588,7 +588,7 @@ export default function VerifikasiPage() {
                         </div>
 
                         {/* Action buttons */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 'auto' }}>
+                        <div className="grid-upload" style={{ marginTop: 'auto', marginBottom: 0 }}>
                             <button onClick={() => handleVerify('VERIFIED_OK')} disabled={verifyMutation.isPending}
                                 style={{ ...btnBase, background: '#16a34a', color: '#fff' }}>✓ Selesai / OK</button>
                             <button onClick={() => handleVerify('NEED_INVESTIGATION')} disabled={verifyMutation.isPending}
@@ -604,81 +604,83 @@ export default function VerifikasiPage() {
                 {isLoading ? (
                     <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Memuat data...</div>
                 ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                        <thead>
-                            <tr style={{ background: '#f8fafc' }}>
-                                {['ID Pelanggan', 'Stand AI', 'Stand Biller', 'Selisih', 'Merek AI / Biller', 'Alasan', 'Status', 'Foto', ''].map(h => (
-                                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {records.map(r => (
-                                <tr key={r.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0f172a' }}>{r.id_pelanggan}</td>
-                                    <td style={{ padding: '10px 16px', color: '#374151' }}>
-                                        {r.corrected_stand != null ? (
-                                            <span>
-                                                <span style={{ color: '#16a34a', fontWeight: 600 }}>{r.corrected_stand}</span>
-                                                <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: 11, marginLeft: 6 }}>{r.stand_ai}</span>
-                                            </span>
-                                        ) : (r.stand_ai ?? '—')}
-                                    </td>
-                                    <td style={{ padding: '10px 16px', color: '#374151' }}>{r.stand_petugas ?? '—'}</td>
-                                    <td style={{ padding: '10px 16px', fontWeight: 600, color: (r.corrected_stand != null && r.stand_petugas != null ? Number(r.corrected_stand) - Number(r.stand_petugas) : (r.selisih || 0)) !== 0 ? '#dc2626' : '#16a34a' }}>
-                                        {r.corrected_stand != null && r.stand_petugas != null ? Number(r.corrected_stand) - Number(r.stand_petugas) : (r.selisih ?? '—')}
-                                    </td>
-                                    <td style={{ padding: '10px 16px', color: '#64748b' }}>{r.merek_ai || '—'} / {r.merek_petugas || '—'}</td>
-                                    <td style={{ padding: '10px 16px', color: '#64748b', fontSize: 11 }}>
-                                        {r.reason_type
-                                            ? reasons.find(o => o.value === r.reason_type)?.label || r.reason_type
-                                            : <span style={{ color: '#cbd5e1' }}>—</span>}
-                                    </td>
-                                    <td style={{ padding: '10px 16px' }}><Badge status={r.status} /></td>
-                                    {/* Kolom Foto */}
-                                    <td style={{ padding: '10px 16px', minWidth: 120 }}>
-                                        <button
-                                            onClick={() => setExpandedFoto(expandedFoto === r.id_pelanggan ? null : r.id_pelanggan)}
-                                            style={{ background: expandedFoto === r.id_pelanggan ? '#dbeafe' : '#f1f5f9',
-                                                     color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 5,
-                                                     padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}
-                                        >
-                                            📷 Foto
-                                        </button>
-                                        {expandedFoto === r.id_pelanggan && (
-                                            <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                                {blthList.map(blth =>
-                                                    Array.from({ length: FOTO_PER_MONTH }, (_, i) => i + 1).map(fk => (
-                                                        <button
-                                                            key={`${blth}-${fk}`}
-                                                            onClick={() => handleFotoClick(r.id_pelanggan, blth, String(fk))}
-                                                            style={{ background: '#fff', border: '1px solid #e2e8f0',
-                                                                     borderRadius: 4, padding: '3px 8px', cursor: 'pointer',
-                                                                     fontSize: 10, color: '#374151', textAlign: 'left',
-                                                                     whiteSpace: 'nowrap' }}
-                                                        >
-                                                            PHOTO {fk} - {blth}
-                                                        </button>
-                                                    ))
-                                                )}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td style={{ padding: '10px 16px' }}>
-                                        <button
-                                            onClick={() => openModal(r)}
-                                            style={{ background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: 5, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}
-                                        >
-                                            Kerjakan
-                                        </button>
-                                    </td>
+                    <div className="table-responsive">
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <thead>
+                                <tr style={{ background: '#f8fafc' }}>
+                                    {['ID Pelanggan', 'Stand AI', 'Stand Biller', 'Selisih', 'Merek AI / Biller', 'Alasan', 'Status', 'Foto', ''].map(h => (
+                                        <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
+                                    ))}
                                 </tr>
-                            ))}
-                            {records.length === 0 && (
-                                <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Tidak ada data BEDA yang perlu dikerjakan</td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {records.map(r => (
+                                    <tr key={r.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0f172a' }}>{r.id_pelanggan}</td>
+                                        <td style={{ padding: '10px 16px', color: '#374151' }}>
+                                            {r.corrected_stand != null ? (
+                                                <span>
+                                                    <span style={{ color: '#16a34a', fontWeight: 600 }}>{r.corrected_stand}</span>
+                                                    <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: 11, marginLeft: 6 }}>{r.stand_ai}</span>
+                                                </span>
+                                            ) : (r.stand_ai ?? '—')}
+                                        </td>
+                                        <td style={{ padding: '10px 16px', color: '#374151' }}>{r.stand_petugas ?? '—'}</td>
+                                        <td style={{ padding: '10px 16px', fontWeight: 600, color: (r.corrected_stand != null && r.stand_petugas != null ? Number(r.corrected_stand) - Number(r.stand_petugas) : (r.selisih || 0)) !== 0 ? '#dc2626' : '#16a34a' }}>
+                                            {r.corrected_stand != null && r.stand_petugas != null ? Number(r.corrected_stand) - Number(r.stand_petugas) : (r.selisih ?? '—')}
+                                        </td>
+                                        <td style={{ padding: '10px 16px', color: '#64748b' }}>{r.merek_ai || '—'} / {r.merek_petugas || '—'}</td>
+                                        <td style={{ padding: '10px 16px', color: '#64748b', fontSize: 11 }}>
+                                            {r.reason_type
+                                                ? reasons.find(o => o.value === r.reason_type)?.label || r.reason_type
+                                                : <span style={{ color: '#cbd5e1' }}>—</span>}
+                                        </td>
+                                        <td style={{ padding: '10px 16px' }}><Badge status={r.status} /></td>
+                                        {/* Kolom Foto */}
+                                        <td style={{ padding: '10px 16px', minWidth: 120 }}>
+                                            <button
+                                                onClick={() => setExpandedFoto(expandedFoto === r.id_pelanggan ? null : r.id_pelanggan)}
+                                                style={{ background: expandedFoto === r.id_pelanggan ? '#dbeafe' : '#f1f5f9',
+                                                         color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 5,
+                                                         padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}
+                                            >
+                                                📷 Foto
+                                            </button>
+                                            {expandedFoto === r.id_pelanggan && (
+                                                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                    {blthList.map(blth =>
+                                                        Array.from({ length: FOTO_PER_MONTH }, (_, i) => i + 1).map(fk => (
+                                                            <button
+                                                                key={`${blth}-${fk}`}
+                                                                onClick={() => handleFotoClick(r.id_pelanggan, blth, String(fk))}
+                                                                style={{ background: '#fff', border: '1px solid #e2e8f0',
+                                                                         borderRadius: 4, padding: '3px 8px', cursor: 'pointer',
+                                                                         fontSize: 10, color: '#374151', textAlign: 'left',
+                                                                         whiteSpace: 'nowrap' }}
+                                                            >
+                                                                PHOTO {fk} - {blth}
+                                                            </button>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td style={{ padding: '10px 16px' }}>
+                                            <button
+                                                onClick={() => openModal(r)}
+                                                style={{ background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: 5, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}
+                                            >
+                                                Kerjakan
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {records.length === 0 && (
+                                    <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>Tidak ada data BEDA yang perlu dikerjakan</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
 
                 {/* Pagination */}
