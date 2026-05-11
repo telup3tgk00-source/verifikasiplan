@@ -23,6 +23,13 @@ class SessionPayload(BaseModel):
     cookie_string: str   # full cookie: "JSESSIONID=x; TS01be508d=x; ..."
     set_by: str = "admin"
 
+import os
+SYNC_SECRET = os.getenv("BOOKMARKLET_SECRET", "metrik-sync-2026")
+
+class ExtensionSyncPayload(BaseModel):
+    cookie_string: str
+    secret_key: str
+
 
 @router.get("/foto/session/status")
 def session_status(current_user: User = Depends(get_current_user)):
@@ -43,6 +50,19 @@ def update_session(payload: SessionPayload, current_user: User = Depends(get_cur
     set_cookie_string(payload.cookie_string, set_by=payload.set_by)
     status = get_session_status()
     return {"ok": True, "message": "Cookie ACMT berhasil diupdate", "cookie_keys": status["cookie_keys"]}
+
+@router.post("/foto/sync-extension")
+def sync_cookie_from_extension(payload: ExtensionSyncPayload):
+    """Endpoint aman untuk Ekstensi Chrome & Bookmarklet tanpa JWT Token."""
+    if payload.secret_key != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+    
+    if not payload.cookie_string or len(payload.cookie_string) < 10:
+        raise HTTPException(status_code=400, detail="Cookie string tidak valid")
+        
+    set_cookie_string(payload.cookie_string, set_by="chrome-extension")
+    status = get_session_status()
+    return {"ok": True, "message": "Cookie berhasil disync dari Ekstensi", "cookie_keys": status["cookie_keys"]}
 
 
 @router.get("/foto")

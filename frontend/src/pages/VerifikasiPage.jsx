@@ -24,23 +24,29 @@ function FotoModal({ foto, onClose }) {
     return (
         <div
             onClick={onClose}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200,
-                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}
+            style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12
+            }}
         >
             <div onClick={e => e.stopPropagation()} className="photo-modal-view"
-                 style={{ background: '#1e293b', borderRadius: 10, padding: 16, maxWidth: '90vw', maxHeight: '90vh',
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                style={{
+                    background: '#1e293b', borderRadius: 10, padding: 16, maxWidth: '90vw', maxHeight: '90vh',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10
+                }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                     <span style={{ color: '#94a3b8', fontSize: 12 }}>
-                        PHOTO {foto.fotoke} &mdash; {foto.blth.slice(0,4)}/{foto.blth.slice(4)} &nbsp;|&nbsp; {foto.idpel}
+                        PHOTO {foto.fotoke} &mdash; {foto.blth.slice(0, 4)}/{foto.blth.slice(4)} &nbsp;|&nbsp; {foto.idpel}
                     </span>
                     <button onClick={onClose}
-                        style={{ background: '#334155', border: 'none', color: '#94a3b8', borderRadius: 5,
-                                 width: 26, height: 26, cursor: 'pointer', fontSize: 15, lineHeight: 1 }}>×</button>
+                        style={{
+                            background: '#334155', border: 'none', color: '#94a3b8', borderRadius: 5,
+                            width: 26, height: 26, cursor: 'pointer', fontSize: 15, lineHeight: 1
+                        }}>×</button>
                 </div>
                 {foto.loading && <div style={{ color: '#94a3b8', padding: 40, fontSize: 13 }}>Memuat foto...</div>}
-                {foto.error  && <div style={{ color: '#f87171', padding: 20, fontSize: 12, textAlign: 'center' }}>{foto.error}</div>}
-                {foto.url    && <img src={foto.url} alt="foto meter"
+                {foto.error && <div style={{ color: '#f87171', padding: 20, fontSize: 12, textAlign: 'center' }}>{foto.error}</div>}
+                {foto.url && <img src={foto.url} alt="foto meter"
                     style={{ maxWidth: '80vw', maxHeight: '75vh', borderRadius: 6, objectFit: 'contain' }} />}
             </div>
         </div>
@@ -65,8 +71,8 @@ function LatestPhoto({ idpel, blth }) {
                 if (isMounted) setFotoState({ loading: false, url: URL.createObjectURL(blob), error: null })
             })
             .catch(e => {
-                const msg = e.message.includes('401') || e.message.includes('EXPIRED') || e.message.includes('belum diset') 
-                    ? 'Sesi ACMT harus di input ulang' 
+                const msg = e.message.includes('401') || e.message.includes('EXPIRED') || e.message.includes('belum diset')
+                    ? 'Sesi ACMT harus di input ulang'
                     : e.message;
                 if (isMounted) setFotoState({ loading: false, url: null, error: msg })
             })
@@ -75,7 +81,7 @@ function LatestPhoto({ idpel, blth }) {
 
     return (
         <>
-            <div 
+            <div
                 onClick={() => fotoState.url && setShowFull(true)}
                 style={{ width: '100%', height: 400, background: '#0f172a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16, cursor: fotoState.url ? 'zoom-in' : 'default', position: 'relative' }}
                 title={fotoState.url ? "Klik untuk perbesar" : ""}
@@ -92,9 +98,9 @@ function LatestPhoto({ idpel, blth }) {
                 )}
             </div>
             {showFull && (
-                <FotoModal 
-                    foto={{ idpel, blth, fotoke: 1, url: fotoState.url, loading: false, error: null }} 
-                    onClose={() => setShowFull(false)} 
+                <FotoModal
+                    foto={{ idpel, blth, fotoke: 1, url: fotoState.url, loading: false, error: null }}
+                    onClose={() => setShowFull(false)}
                 />
             )}
         </>
@@ -108,10 +114,10 @@ const STATUS_LABEL = {
     NEED_INVESTIGATION: 'Investigasi'
 }
 const STATUS_STYLE = {
-    PENDING:             { bg: '#f1f5f9', color: '#64748b', border: '#e2e8f0' },
-    VERIFIED_OK:         { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
-    VERIFIED_REJECT:     { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
-    NEED_INVESTIGATION:  { bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+    PENDING: { bg: '#f1f5f9', color: '#64748b', border: '#e2e8f0' },
+    VERIFIED_OK: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+    VERIFIED_REJECT: { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
+    NEED_INVESTIGATION: { bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
 }
 
 // Alasan perbedaan sekarang diambil dinamis dari API
@@ -130,18 +136,18 @@ const btnBase = { border: 'none', borderRadius: 6, padding: '9px 0', cursor: 'po
 
 // ─── ACMT Session Panel ───────────────────────────────────────────────────────
 const COOKIE_FIELDS = [
-    { key: 'JSESSIONID',    label: 'JSESSIONID',    placeholder: '81EA7996B2C3D4E5F6A7...' },
+    { key: 'JSESSIONID', label: 'JSESSIONID', placeholder: '81EA7996B2C3D4E5F6A7...' },
     { key: 'Pool_ACMTJava', label: 'Pool_ACMTJava', placeholder: '2990909632.16927.0000' },
-    { key: 'TS017170f7',    label: 'TS017170f7',    placeholder: '0111e437098a28f5...' },
-    { key: 'TS01be508d',    label: 'TS01be508d',    placeholder: '0111e437098a28f5...' },
+    { key: 'TS017170f7', label: 'TS017170f7', placeholder: '0111e437098a28f5...' },
+    { key: 'TS01be508d', label: 'TS01be508d', placeholder: '0111e437098a28f5...' },
 ]
 
 function AcmtSessionPanel() {
-    const [status, setStatus]       = useState(null)
-    const [showForm, setShowForm]   = useState(false)
+    const [status, setStatus] = useState(null)
+    const [showForm, setShowForm] = useState(false)
     const [showGuide, setShowGuide] = useState(false)
-    const [saving, setSaving]       = useState(false)
-    const [fields, setFields]       = useState({
+    const [saving, setSaving] = useState(false)
+    const [fields, setFields] = useState({
         JSESSIONID: '', Pool_ACMTJava: '', TS017170f7: '', TS01be508d: ''
     })
 
@@ -171,43 +177,53 @@ function AcmtSessionPanel() {
             setFields({ JSESSIONID: '', Pool_ACMTJava: '', TS017170f7: '', TS01be508d: '' })
             setShowForm(false)
             await loadStatus()
-        } catch(e) { alert('Gagal menyimpan: ' + (e.response?.data?.detail || e.message)) }
+        } catch (e) { alert('Gagal menyimpan: ' + (e.response?.data?.detail || e.message)) }
         finally { setSaving(false) }
     }
 
     const hasSession = status?.has_session
-    const setAt      = status?.set_at ? new Date(status.set_at).toLocaleString('id-ID') : null
+    const setAt = status?.set_at ? new Date(status.set_at).toLocaleString('id-ID') : null
     const cookieKeys = status?.cookie_keys || []
 
     return (
-        <div style={{ background: hasSession ? '#f0fdf4' : '#fef2f2',
-                      border: `1px solid ${hasSession ? '#bbf7d0' : '#fecaca'}`,
-                      borderRadius: 8, padding: '10px 14px', marginBottom: 16,
-                      display: 'flex', gap: 12, flexDirection: 'column' }}>
+        <div style={{
+            background: hasSession ? '#f0fdf4' : '#fef2f2',
+            border: `1px solid ${hasSession ? '#bbf7d0' : '#fecaca'}`,
+            borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+            display: 'flex', gap: 12, flexDirection: 'column'
+        }}>
             {/* Status bar */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-                               color: hasSession ? '#15803d' : '#dc2626', letterSpacing: '0.5px' }}>
+                <span style={{
+                    fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+                    color: hasSession ? '#15803d' : '#dc2626', letterSpacing: '0.5px'
+                }}>
                     {hasSession ? '● Sesi ACMT Aktif' : '○ Sesi ACMT Belum Diset'}
                 </span>
                 {setAt && <span style={{ fontSize: 11, color: '#64748b' }}>diset {setAt} oleh {status.set_by}</span>}
                 {cookieKeys.length > 0 && (
-                    <span style={{ fontSize: 10, color: '#64748b', background: '#f1f5f9',
-                                   border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 7px',
-                                   fontFamily: 'monospace' }}>
+                    <span style={{
+                        fontSize: 10, color: '#64748b', background: '#f1f5f9',
+                        border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 7px',
+                        fontFamily: 'monospace'
+                    }}>
                         {cookieKeys.join(' · ')}
                     </span>
                 )}
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
                     <button onClick={() => { setShowGuide(g => !g); setShowForm(false) }}
-                        style={{ fontSize: 11, padding: '3px 10px', border: '1px solid #94a3b8',
-                                 borderRadius: 4, background: '#fff', cursor: 'pointer', color: '#374151' }}>
-                        ? Cara copy cookie
+                        style={{
+                            fontSize: 11, padding: '3px 10px', border: '1px solid #94a3b8',
+                            borderRadius: 4, background: '#fff', cursor: 'pointer', color: '#374151'
+                        }}>
+                        ? Cara Sync (Ekstensi)
                     </button>
                     <button onClick={() => { setShowForm(f => !f); setShowGuide(false) }}
-                        style={{ fontSize: 11, padding: '3px 10px', border: 'none', borderRadius: 4,
-                                 background: hasSession ? '#16a34a' : '#dc2626',
-                                 color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                        style={{
+                            fontSize: 11, padding: '3px 10px', border: 'none', borderRadius: 4,
+                            background: hasSession ? '#16a34a' : '#dc2626',
+                            color: '#fff', cursor: 'pointer', fontWeight: 600
+                        }}>
                         {hasSession ? '↻ Update Cookie' : '+ Set Cookie ACMT'}
                     </button>
                 </div>
@@ -216,16 +232,15 @@ function AcmtSessionPanel() {
             {/* Panduan */}
             {showGuide && (
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: 12, fontSize: 11, color: '#374151', lineHeight: 1.7 }}>
-                    <strong>Cara ambil nilai cookie dari DevTools (Chrome):</strong>
+                    <strong>Cara Auto-Sync Cookie (Menggunakan Ekstensi Chrome):</strong>
                     <ol style={{ margin: '6px 0 0 16px', padding: 0 }}>
-                        <li>Buka <a href="https://portalapp.iconpln.co.id/acmt/index.jsp" target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>portalapp.iconpln.co.id/acmt/index.jsp</a></li>
-                        <li>Login dengan username &amp; password, isi CAPTCHA</li>
-                        <li>Tekan <kbd style={{ background: '#e2e8f0', padding: '1px 5px', borderRadius: 3 }}>F12</kbd> &rarr; tab <strong>Application</strong> &rarr; <strong>Cookies</strong> &rarr; <code>portalapp.iconpln.co.id</code></li>
-                        <li>Cari baris <strong>JSESSIONID</strong> &rarr; klik &rarr; copy kolom <strong>Value</strong></li>
-                        <li>Lakukan hal yang sama untuk <strong>Pool_ACMTJava</strong>, <strong>TS017170f7</strong>, <strong>TS01be508d</strong></li>
-                        <li>Paste masing-masing nilai ke field yang sesuai di form ini</li>
+                        <li>Unduh file Ekstensi <strong>METRIK Auto-Sync</strong> dari <a href="https://drive.google.com/drive/folders/1i0C-Tp7jT4fkfgbrRDN6EP1SvnuXGqWq?usp=sharing" target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontWeight: 600 }}>Link Google Drive Ini</a>, lalu *extract* dan instal di Chrome Anda melalui menu <code>chrome://extensions/</code> (aktifkan Developer mode).</li>
+                        <li>Klik ikon Ekstensi (bentuk puzzle) di pojok kanan atas browser, lalu klik <strong>METRIK Auto-Sync</strong>.</li>
+                        <li>Isi URL Backend (contoh: <code>http://localhost:8000</code>) dan Secret Key (<code>metrik-sync-2026</code>), lalu <strong>Simpan Pengaturan</strong>.</li>
+                        <li>Buka halaman <a href="https://portalapp.iconpln.co.id/acmt/index.jsp" target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>ACMT PLN</a> dan <strong>Login</strong> menggunakan akun Anda.</li>
+                        <li>Buka kembali ekstensi dan tekan tombol <strong style={{ color: '#16a34a' }}>Force Sync Sekarang</strong>. Refresh halaman METRIK ini untuk melihat status aktif.</li>
                     </ol>
-                    <p style={{ margin: '8px 0 0', color: '#64748b' }}>⏱ Cookie berlaku beberapa jam. Update kembali jika foto tidak muncul.</p>
+                    <p style={{ margin: '8px 0 0', color: '#64748b' }}>💡 Setelah diset, ekstensi akan otomatis melakukan sinkronisasi dan mencegah auto-logout selama browser Chrome Anda tidak ditutup.</p>
                 </div>
             )}
 
@@ -235,9 +250,11 @@ function AcmtSessionPanel() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         {COOKIE_FIELDS.map(f => (
                             <div key={f.key}>
-                                <label style={{ fontSize: 10, fontWeight: 600, color: '#64748b',
-                                                display: 'block', marginBottom: 3, fontFamily: 'monospace',
-                                                textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                                <label style={{
+                                    fontSize: 10, fontWeight: 600, color: '#64748b',
+                                    display: 'block', marginBottom: 3, fontFamily: 'monospace',
+                                    textTransform: 'uppercase', letterSpacing: '0.3px'
+                                }}>
                                     {f.label}
                                     {f.key === 'JSESSIONID' && <span style={{ color: '#ef4444' }}> *</span>}
                                 </label>
@@ -245,24 +262,30 @@ function AcmtSessionPanel() {
                                     value={fields[f.key]}
                                     onChange={e => setFields(prev => ({ ...prev, [f.key]: e.target.value }))}
                                     placeholder={f.placeholder}
-                                    style={{ width: '100%', height: 30, padding: '0 8px',
-                                             border: `1px solid ${f.key === 'JSESSIONID' && !fields[f.key] ? '#fca5a5' : '#d1d5db'}`,
-                                             borderRadius: 5, fontSize: 11, fontFamily: 'monospace',
-                                             outline: 'none', boxSizing: 'border-box', color: '#1e293b' }}
+                                    style={{
+                                        width: '100%', height: 30, padding: '0 8px',
+                                        border: `1px solid ${f.key === 'JSESSIONID' && !fields[f.key] ? '#fca5a5' : '#d1d5db'}`,
+                                        borderRadius: 5, fontSize: 11, fontFamily: 'monospace',
+                                        outline: 'none', boxSizing: 'border-box', color: '#1e293b'
+                                    }}
                                 />
                             </div>
                         ))}
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <button onClick={handleSave} disabled={saving || !fields.JSESSIONID.trim()}
-                            style={{ padding: '0 16px', height: 32, background: '#2563eb', color: '#fff',
-                                     border: 'none', borderRadius: 5, cursor: 'pointer', fontSize: 12,
-                                     fontWeight: 600, opacity: saving || !fields.JSESSIONID.trim() ? 0.5 : 1 }}>
+                            style={{
+                                padding: '0 16px', height: 32, background: '#2563eb', color: '#fff',
+                                border: 'none', borderRadius: 5, cursor: 'pointer', fontSize: 12,
+                                fontWeight: 600, opacity: saving || !fields.JSESSIONID.trim() ? 0.5 : 1
+                            }}>
                             {saving ? 'Menyimpan...' : 'Simpan Cookie'}
                         </button>
                         <button onClick={() => setShowForm(false)}
-                            style={{ padding: '0 10px', height: 32, background: '#f1f5f9', color: '#374151',
-                                     border: '1px solid #e2e8f0', borderRadius: 5, cursor: 'pointer', fontSize: 12 }}>
+                            style={{
+                                padding: '0 10px', height: 32, background: '#f1f5f9', color: '#374151',
+                                border: '1px solid #e2e8f0', borderRadius: 5, cursor: 'pointer', fontSize: 12
+                            }}>
                             Batal
                         </button>
                         <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 4 }}>
@@ -320,11 +343,11 @@ export default function VerifikasiPage() {
                 throw new Error(err.detail || `HTTP ${resp.status}`)
             }
             const blob = await resp.blob()
-            const url  = URL.createObjectURL(blob)
+            const url = URL.createObjectURL(blob)
             setActiveFoto(prev => ({ ...prev, loading: false, url }))
         } catch (e) {
-            const msg = e.message.includes('401') || e.message.includes('EXPIRED') || e.message.includes('belum diset') 
-                ? 'Sesi ACMT harus di input ulang' 
+            const msg = e.message.includes('401') || e.message.includes('EXPIRED') || e.message.includes('belum diset')
+                ? 'Sesi ACMT harus di input ulang'
                 : e.message;
             setActiveFoto(prev => ({ ...prev, loading: false, error: msg }))
             if (msg.includes('input ulang')) toast.error(msg)
@@ -389,10 +412,10 @@ export default function VerifikasiPage() {
         verifyMutation.mutate({ id: selected.id, status, note, reasonType, correctedStand })
     }
 
-    const currentSelisih = selected && reasonType === 'ai_salah_baca' && correctedStand !== '' && selected.stand_petugas != null 
-        ? Number(correctedStand) - Number(selected.stand_petugas) 
+    const currentSelisih = selected && reasonType === 'ai_salah_baca' && correctedStand !== '' && selected.stand_petugas != null
+        ? Number(correctedStand) - Number(selected.stand_petugas)
         : (selected?.selisih ?? 0);
-        
+
     const isSelisihZero = currentSelisih === 0;
     const selisihBg = isSelisihZero ? '#f0fdf4' : '#fef2f2';
     const selisihBorder = isSelisihZero ? '#bbf7d0' : '#fecaca';
@@ -455,13 +478,13 @@ export default function VerifikasiPage() {
             {selected && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div className="photo-modal-content">
-                        
+
                         {/* Kiri: Foto Terbaru */}
                         <div className="photo-modal-left">
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                                 Foto Terbaru
                                 <span style={{ padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontFamily: 'monospace' }}>
-                                    {activeBulan.slice(0,4)}/{activeBulan.slice(4)}
+                                    {activeBulan.slice(0, 4)}/{activeBulan.slice(4)}
                                 </span>
                                 {!selectedSession?.bulan_verifikasi && filter.sessionId && (
                                     <span style={{ fontSize: 10, color: '#d97706' }} title="Batch ini diupload sebelum fitur kunci bulan, menggunakan bulan kalender sebagai fallback">⚠</span>
@@ -470,17 +493,17 @@ export default function VerifikasiPage() {
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                                 <LatestPhoto idpel={selected.id_pelanggan} blth={activeBulan} />
                             </div>
-                            
+
                             {/* Navigasi Next/Prev di bawah foto */}
                             <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-                                <button 
+                                <button
                                     onClick={() => navigateModal(-1)}
                                     disabled={records.findIndex(r => r.id === selected.id) <= 0}
                                     style={{ flex: 1, padding: '8px 0', border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc', color: '#475569', fontSize: 12, fontWeight: 600, cursor: records.findIndex(r => r.id === selected.id) <= 0 ? 'not-allowed' : 'pointer', opacity: records.findIndex(r => r.id === selected.id) <= 0 ? 0.5 : 1 }}
                                 >
                                     &larr; Sebelumnya
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => navigateModal(1)}
                                     disabled={records.findIndex(r => r.id === selected.id) >= records.length - 1}
                                     style={{ flex: 1, padding: '8px 0', border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc', color: '#475569', fontSize: 12, fontWeight: 600, cursor: records.findIndex(r => r.id === selected.id) >= records.length - 1 ? 'not-allowed' : 'pointer', opacity: records.findIndex(r => r.id === selected.id) >= records.length - 1 ? 0.5 : 1 }}
@@ -503,100 +526,100 @@ export default function VerifikasiPage() {
 
                             {/* Side-by-side data */}
                             <div className="grid-upload" style={{ marginBottom: 16 }}>
-                            {[
-                                { title: 'Hasil AI', bg: '#f8fafc', border: '#e2e8f0', stand: selected.stand_ai, merek: selected.merek_ai, tipe: selected.tipe_ai },
-                                { title: 'Stand Biller', bg: '#fffbeb', border: '#fde68a', stand: selected.stand_petugas, merek: selected.merek_petugas, tipe: selected.tipe_petugas },
-                            ].map(col => (
-                                <div key={col.title} style={{ background: col.bg, border: `1px solid ${col.border}`, borderRadius: 8, padding: 14 }}>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>{col.title}</div>
-                                    {[['Stand KWH', col.stand], ['Merek', col.merek], ['Tipe', col.tipe]].map(([k, v]) => (
-                                        <div key={k} style={{ marginBottom: 8 }}>
-                                            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>{k}</div>
-                                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-                                                {k === 'Stand KWH' && col.title === 'Hasil AI' && reasonType === 'ai_salah_baca' && correctedStand !== '' ? (
-                                                    <span>
-                                                        <span style={{ color: '#16a34a' }}>{correctedStand}</span>
-                                                        <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: 11, marginLeft: 6 }}>{v ?? '—'}</span>
-                                                    </span>
-                                                ) : (
-                                                    v ?? '—'
-                                                )}
+                                {[
+                                    { title: 'Hasil AI', bg: '#f8fafc', border: '#e2e8f0', stand: selected.stand_ai, merek: selected.merek_ai, tipe: selected.tipe_ai },
+                                    { title: 'Stand Biller', bg: '#fffbeb', border: '#fde68a', stand: selected.stand_petugas, merek: selected.merek_petugas, tipe: selected.tipe_petugas },
+                                ].map(col => (
+                                    <div key={col.title} style={{ background: col.bg, border: `1px solid ${col.border}`, borderRadius: 8, padding: 14 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>{col.title}</div>
+                                        {[['Stand KWH', col.stand], ['Merek', col.merek], ['Tipe', col.tipe]].map(([k, v]) => (
+                                            <div key={k} style={{ marginBottom: 8 }}>
+                                                <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>{k}</div>
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                                                    {k === 'Stand KWH' && col.title === 'Hasil AI' && reasonType === 'ai_salah_baca' && correctedStand !== '' ? (
+                                                        <span>
+                                                            <span style={{ color: '#16a34a' }}>{correctedStand}</span>
+                                                            <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: 11, marginLeft: 6 }}>{v ?? '—'}</span>
+                                                        </span>
+                                                    ) : (
+                                                        v ?? '—'
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Selisih */}
-                        <div style={{ background: selisihBg, border: `1px solid ${selisihBorder}`, borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s' }}>
-                            <div>
-                                <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selisih Stand</div>
-                                <div style={{ fontSize: 20, fontWeight: 700, color: selisihColor, transition: 'color 0.2s' }}>
-                                    {currentSelisih} KWH
-                                </div>
+                                        ))}
+                                    </div>
+                                ))}
                             </div>
-                            {selected.is_anomaly && (
-                                <span style={{ padding: '4px 10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 5, fontSize: 11, fontWeight: 600 }}>
-                                    ⚠ Anomali Tinggi
-                                </span>
-                            )}
-                        </div>
 
-                        {/* Alasan */}
-                        <div style={{ marginBottom: 14 }}>
-                            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
-                                Alasan Perbedaan <span style={{ color: '#ef4444' }}>*</span>
-                            </label>
-                            <select
-                                value={reasonType}
-                                onChange={e => setReasonType(e.target.value)}
-                                style={{ ...inputStyle, width: '100%', height: 36, paddingLeft: 11, boxSizing: 'border-box' }}
-                            >
-                                <option value="">— Pilih Alasan —</option>
-                                {reasons.filter(r => r.is_active || r.value === reasonType).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
-                        </div>
+                            {/* Selisih */}
+                            <div style={{ background: selisihBg, border: `1px solid ${selisihBorder}`, borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s' }}>
+                                <div>
+                                    <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selisih Stand</div>
+                                    <div style={{ fontSize: 20, fontWeight: 700, color: selisihColor, transition: 'color 0.2s' }}>
+                                        {currentSelisih} KWH
+                                    </div>
+                                </div>
+                                {selected.is_anomaly && (
+                                    <span style={{ padding: '4px 10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 5, fontSize: 11, fontWeight: 600 }}>
+                                        ⚠ Anomali Tinggi
+                                    </span>
+                                )}
+                            </div>
 
-                        {/* Stand koreksi (muncul jika ai_salah_baca) */}
-                        {reasonType === 'ai_salah_baca' && (
+                            {/* Alasan */}
                             <div style={{ marginBottom: 14 }}>
                                 <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
-                                    Stand Koreksi (KWH)
+                                    Alasan Perbedaan <span style={{ color: '#ef4444' }}>*</span>
                                 </label>
-                                <input
-                                    type="number"
-                                    value={correctedStand}
-                                    onChange={e => setCorrectedStand(e.target.value)}
-                                    placeholder="Masukkan stand yang benar..."
-                                    style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
+                                <select
+                                    value={reasonType}
+                                    onChange={e => setReasonType(e.target.value)}
+                                    style={{ ...inputStyle, width: '100%', height: 36, paddingLeft: 11, boxSizing: 'border-box' }}
+                                >
+                                    <option value="">— Pilih Alasan —</option>
+                                    {reasons.filter(r => r.is_active || r.value === reasonType).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </select>
+                            </div>
+
+                            {/* Stand koreksi (muncul jika ai_salah_baca) */}
+                            {reasonType === 'ai_salah_baca' && (
+                                <div style={{ marginBottom: 14 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
+                                        Stand Koreksi (KWH)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={correctedStand}
+                                        onChange={e => setCorrectedStand(e.target.value)}
+                                        placeholder="Masukkan stand yang benar..."
+                                        style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Catatan */}
+                            <div style={{ marginBottom: 20 }}>
+                                <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>
+                                    Catatan <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opsional)</span>
+                                </label>
+                                <textarea
+                                    value={note} onChange={e => setNote(e.target.value)}
+                                    rows={2}
+                                    placeholder="Catatan tambahan..."
+                                    style={{ width: '100%', padding: 10, border: '1px solid #d1d5db', borderRadius: 7, fontSize: 12, outline: 'none', resize: 'none', boxSizing: 'border-box', color: '#1e293b' }}
                                 />
                             </div>
-                        )}
 
-                        {/* Catatan */}
-                        <div style={{ marginBottom: 20 }}>
-                            <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>
-                                Catatan <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opsional)</span>
-                            </label>
-                            <textarea
-                                value={note} onChange={e => setNote(e.target.value)}
-                                rows={2}
-                                placeholder="Catatan tambahan..."
-                                style={{ width: '100%', padding: 10, border: '1px solid #d1d5db', borderRadius: 7, fontSize: 12, outline: 'none', resize: 'none', boxSizing: 'border-box', color: '#1e293b' }}
-                            />
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="grid-upload" style={{ marginTop: 'auto', marginBottom: 0 }}>
-                            <button onClick={() => handleVerify('VERIFIED_OK')} disabled={verifyMutation.isPending}
-                                style={{ ...btnBase, background: '#16a34a', color: '#fff' }}>✓ Selesai / OK</button>
-                            <button onClick={() => handleVerify('NEED_INVESTIGATION')} disabled={verifyMutation.isPending}
-                                style={{ ...btnBase, background: '#d97706', color: '#fff' }}>⚑ Perlu Investigasi</button>
+                            {/* Action buttons */}
+                            <div className="grid-upload" style={{ marginTop: 'auto', marginBottom: 0 }}>
+                                <button onClick={() => handleVerify('VERIFIED_OK')} disabled={verifyMutation.isPending}
+                                    style={{ ...btnBase, background: '#16a34a', color: '#fff' }}>✓ Selesai / OK</button>
+                                <button onClick={() => handleVerify('NEED_INVESTIGATION')} disabled={verifyMutation.isPending}
+                                    style={{ ...btnBase, background: '#d97706', color: '#fff' }}>⚑ Perlu Investigasi</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             )}
 
             {/* Table */}
@@ -640,9 +663,11 @@ export default function VerifikasiPage() {
                                         <td style={{ padding: '10px 16px', minWidth: 120 }}>
                                             <button
                                                 onClick={() => setExpandedFoto(expandedFoto === r.id_pelanggan ? null : r.id_pelanggan)}
-                                                style={{ background: expandedFoto === r.id_pelanggan ? '#dbeafe' : '#f1f5f9',
-                                                         color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 5,
-                                                         padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}
+                                                style={{
+                                                    background: expandedFoto === r.id_pelanggan ? '#dbeafe' : '#f1f5f9',
+                                                    color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 5,
+                                                    padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500
+                                                }}
                                             >
                                                 📷 Foto
                                             </button>
@@ -653,10 +678,12 @@ export default function VerifikasiPage() {
                                                             <button
                                                                 key={`${blth}-${fk}`}
                                                                 onClick={() => handleFotoClick(r.id_pelanggan, blth, String(fk))}
-                                                                style={{ background: '#fff', border: '1px solid #e2e8f0',
-                                                                         borderRadius: 4, padding: '3px 8px', cursor: 'pointer',
-                                                                         fontSize: 10, color: '#374151', textAlign: 'left',
-                                                                         whiteSpace: 'nowrap' }}
+                                                                style={{
+                                                                    background: '#fff', border: '1px solid #e2e8f0',
+                                                                    borderRadius: 4, padding: '3px 8px', cursor: 'pointer',
+                                                                    fontSize: 10, color: '#374151', textAlign: 'left',
+                                                                    whiteSpace: 'nowrap'
+                                                                }}
                                                             >
                                                                 PHOTO {fk} - {blth}
                                                             </button>
