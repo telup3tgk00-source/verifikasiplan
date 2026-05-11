@@ -13,7 +13,7 @@ export default function AssignmentPage() {
     const qc = useQueryClient()
 
     const [sessionId, setSessionId] = useState('')
-    const [method, setMethod] = useState('auto')
+    const [method, setMethod] = useState('auto_unit')
     const [selectedOps, setSelectedOps] = useState([])
     const [rangeStart, setRangeStart] = useState('')
     const [rangeEnd, setRangeEnd] = useState('')
@@ -66,7 +66,8 @@ export default function AssignmentPage() {
     if (role !== 'admin' && role !== 'supervisor') return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Akses ditolak.</div>
 
     const methods = [
-        { key: 'auto', label: 'Auto Split', desc: 'Bagi rata semua record' },
+        { key: 'auto_unit', label: 'Berdasarkan Unit', desc: 'Bagi otomatis ke petugas sesuai Unit Penugasan-nya' },
+        { key: 'auto', label: 'Auto Split', desc: 'Bagi rata semua record ke yang dipilih' },
         { key: 'range', label: 'Range ID', desc: 'Berdasarkan rentang ID' },
         { key: 'prefix', label: 'Prefix ID', desc: 'Berdasarkan kode awalan' },
     ]
@@ -156,6 +157,11 @@ export default function AssignmentPage() {
                                             transition: 'all 0.1s', userSelect: 'none'
                                         }}>
                                         {u.full_name}
+                                        {u.unit_penugasan && (
+                                            <span style={{ marginLeft: 6, fontSize: 10, padding: '2px 6px', background: selectedOps.includes(u.id) ? '#dbeafe' : '#f1f5f9', color: selectedOps.includes(u.id) ? '#1e40af' : '#64748b', borderRadius: 4, fontFamily: 'monospace' }}>
+                                                {u.unit_penugasan}
+                                            </span>
+                                        )}
                                     </div>
                                 ))}
                             </div>

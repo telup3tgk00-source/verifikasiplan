@@ -64,7 +64,7 @@ def export_excel(
     ws = wb.active
     ws.title = "Data Verifikasi"
 
-    headers = ["ID Pelanggan","Tipe (Match/Beda)","Stand AI","Stand Petugas","Selisih",
+    headers = ["Unit", "ID Pelanggan", "Kode Nama Biller", "Tipe (Match/Beda)","Stand AI","Stand Petugas","Selisih",
                "Merek AI","Merek Petugas","Tipe AI","Tipe Petugas",
                "Status", "Alasan Beda", "Stand Koreksi", "Catatan",
                "Verifikator","Waktu Verifikasi"]
@@ -98,7 +98,7 @@ def export_excel(
             display_record_type = "MATCH (KOREKSI)"
 
         ws.append([
-            rec.id_pelanggan, display_record_type, display_stand_ai, rec.stand_petugas, display_selisih,
+            rec.unit or "", rec.id_pelanggan, rec.kode_nama_biller or "", display_record_type, display_stand_ai, rec.stand_petugas, display_selisih,
             rec.merek_ai, rec.merek_petugas, rec.tipe_ai, rec.tipe_petugas,
             status_val, reason_str, rec.corrected_stand or "", rec.catatan or "", 
             users.get(rec.assigned_to, "-") if rec.assigned_to else "-",

@@ -14,6 +14,7 @@ export default function UploadPage() {
     const [fileMatch, setFileMatch] = useState(null)
     const [fileBeda, setFileBeda] = useState(null)
     const [batchName, setBatchName] = useState('')
+    const [dialog, setDialog] = useState(null)
 
     // Generate daftar bulan: bulan ini + 5 bulan ke belakang
     const bulanOptions = (() => {
@@ -92,6 +93,20 @@ export default function UploadPage() {
 
     return (
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+            {dialog && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: '#fff', borderRadius: 10, width: 400, maxWidth: '90%', padding: 24, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+                        <h3 style={{ margin: '0 0 12px 0', fontSize: 16, color: '#0f172a' }}>{dialog.title}</h3>
+                        <p style={{ margin: '0 0 20px 0', fontSize: 13, color: '#475569', lineHeight: 1.5 }}>{dialog.message}</p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                            <button onClick={() => setDialog(null)} style={{ padding: '8px 16px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Batal</button>
+                            <button onClick={() => { dialog.onConfirm(); setDialog(null) }} style={{ padding: '8px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+                                Konfirmasi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div style={{ marginBottom: 24 }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.4px', margin: 0 }}>Upload Match & Beda</h1>
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Upload hasil dari Web 1: File MATCH (sudah sesuai) dan File BEDA (perlu dikerjakan petugas)</p>
@@ -235,7 +250,11 @@ export default function UploadPage() {
                                         </td>
                                         <td style={{ padding: '10px 16px' }}>
                                             <button
-                                                onClick={() => { if (confirm('Hapus sesi ini? Data record akan dihapus.')) deleteSession.mutate(s.id) }}
+                                                onClick={() => setDialog({
+                                                    title: 'Hapus Sesi',
+                                                    message: 'Hapus sesi ini? Data record dan progres pembagian tugas di dalam sesi ini akan ikut terhapus permanen.',
+                                                    onConfirm: () => deleteSession.mutate(s.id)
+                                                })}
                                                 style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}
                                             >
                                                 Hapus

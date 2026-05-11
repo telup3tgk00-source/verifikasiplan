@@ -10,7 +10,17 @@ chrome.alarms.onAlarm.addListener((alarm) => {
         console.log("Mengirim Heartbeat ke portal ACMT untuk mencegah auto-logout...");
         // Ping halaman ACMT untuk menjaga sesi tetap hidup
         fetch("https://portalapp.iconpln.co.id/acmt/Main.htm", { method: "HEAD" })
-            .then(res => console.log("Heartbeat sukses, status:", res.status))
+            .then(res => {
+                console.log("Heartbeat sukses, status:", res.status);
+                // Langsung paksa baca cookie terbaru dan kirim ke METRIK tiap 1 menit
+                // Ini menutupi kelemahan onChanged yang kadang gagal mendeteksi rotasi cookie F5
+                chrome.cookies.getAll({ domain: "portalapp.iconpln.co.id" }, (cookies) => {
+                    let cookieString = cookies.map(c => `${c.name}=${c.value}`).join("; ");
+                    if (cookieString.includes("JSESSIONID") || cookieString.includes("ci_session")) {
+                        syncToMetrik(cookieString);
+                    }
+                });
+            })
             .catch(err => console.error("Heartbeat gagal:", err));
     }
 });

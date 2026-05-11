@@ -39,7 +39,53 @@ def assign_tasks(req: AssignmentRequest, db: Session = Depends(get_db)):
     # Jika manual/range/prefix dan hanya 1 operator, assign semua ke dia
     # Jika auto, bagi rata ke semua operator_ids
     batches = []
-    if req.method == "auto" or (len(records) > 0 and n_ops > 1):
+    if req.method == "auto_unit":
+        from app.models import User
+        users = db.query(User).filter(User.id.in_(req.operator_ids)).all()
+        
+        unit_to_users = {}
+        for u in users:
+            if u.unit_penugasan:
+                for unit in [x.strip() for x in u.unit_penugasan.split(',') if x.strip()]:
+                    if unit not in unit_to_users:
+                        unit_to_users[unit] = []
+                    unit_to_users[unit].append(u.id)
+                    
+        unit_to_records = {}
+        unassigned_count = 0
+        
+        for rec in records:
+            u_val = rec.unit or ""
+            if not u_val or u_val not in unit_to_users or not unit_to_users[u_val]:
+                unassigned_count += 1
+                continue
+            if u_val not in unit_to_records:
+                unit_to_records[u_val] = []
+            unit_to_records[u_val].append(rec)
+            
+        batches_dict = {}
+        for unit, recs in unit_to_records.items():
+            ops = unit_to_users[unit]
+            n_ops_for_unit = len(ops)
+            chunk = len(recs) // n_ops_for_unit
+            for i, op_id in enumerate(ops):
+                start = i * chunk
+                end = start + chunk if i < n_ops_for_unit - 1 else len(recs)
+                batch_recs = recs[start:end]
+                for r in batch_recs:
+                    r.assigned_to = op_id
+                if batch_recs:
+                    batches_dict[op_id] = batches_dict.get(op_id, 0) + len(batch_recs)
+                    
+        for op_id, total in batches_dict.items():
+            batch = AssignmentBatch(session_id=req.session_id, operator_id=op_id, total_assigned=total)
+            db.add(batch)
+            batches.append({"operator_id": op_id, "total": total})
+            
+        if unassigned_count > 0:
+            pass # Maybe return a warning
+            
+    elif req.method == "auto" or (len(records) > 0 and n_ops > 1):
         chunk = len(records) // n_ops
         for i, op_id in enumerate(req.operator_ids):
             start = i * chunk
@@ -84,7 +130,9 @@ def assign_tasks(req: AssignmentRequest, db: Session = Depends(get_db)):
         db.add(notif)
     db.commit()
 
-    return {"message": "Tugas berhasil dibagi", "distribution": batches, "total_processed": len(records)}
+    assigned_count = sum(b['total'] for b in batches)
+    warn_msg = f" Ada {unassigned_count} data gagal dibagikan karena tidak ada unit / petugas untuk unit tersebut." if req.method == "auto_unit" and 'unassigned_count' in locals() and unassigned_count > 0 else ""
+    return {"message": f"Tugas berhasil dibagi ke {len(batches)} petugas.{warn_msg}", "distribution": batches, "total_processed": assigned_count}
 
 @router.get("/progress")
 def get_progress(session_id: int, db: Session = Depends(get_db)):

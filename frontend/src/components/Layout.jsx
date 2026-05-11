@@ -19,12 +19,17 @@ export default function Layout() {
     const navigate = useNavigate()
     const location = useLocation()
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+    const [dialog, setDialog] = useState(null)
 
     function handleLogout() {
-        if (window.confirm('Apakah Anda yakin ingin keluar?')) {
-            logout()
-            navigate('/login')
-        }
+        setDialog({
+            title: 'Keluar',
+            message: 'Apakah Anda yakin ingin keluar dari aplikasi?',
+            onConfirm: () => {
+                logout()
+                navigate('/login')
+            }
+        })
     }
 
     const initials = fullName ? fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'U'
@@ -32,6 +37,20 @@ export default function Layout() {
 
     return (
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+            {dialog && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: '#fff', borderRadius: 10, width: 360, maxWidth: '90%', padding: 24, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+                        <h3 style={{ margin: '0 0 12px 0', fontSize: 16, color: '#0f172a' }}>{dialog.title}</h3>
+                        <p style={{ margin: '0 0 20px 0', fontSize: 13, color: '#475569', lineHeight: 1.5 }}>{dialog.message}</p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                            <button onClick={() => setDialog(null)} style={{ padding: '8px 16px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Batal</button>
+                            <button onClick={() => { dialog.onConfirm(); setDialog(null) }} style={{ padding: '8px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+                                Ya, Keluar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Mobile Backdrop */}
             {isSidebarOpen && (
                 <div onClick={() => setIsSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9 }}></div>

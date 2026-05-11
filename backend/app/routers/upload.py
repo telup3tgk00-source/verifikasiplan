@@ -46,6 +46,8 @@ def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int) -> li
     col_merek      = find_col(df, ["Merek", "merek", "MEREK", "Merk"])
     col_tipe       = find_col(df, ["Tipe Stan", "tipe_stan", "TIPE STAN", "Tipe"])
     col_nama_bil   = find_col(df, ["Nama Biller", "nama_biller", "NAMA BILLER"])
+    col_unit       = find_col(df, ["Unit", "unit", "UNIT"])
+    col_kode_nama_bil = find_col(df, ["Kode Nama Biller", "kode_nama_biller", "KODE NAMA BILLER"])
 
     if not col_id:
         raise ValueError("Kolom 'ID Pelanggan' tidak ditemukan di file Excel")
@@ -68,10 +70,14 @@ def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int) -> li
             merek     = str(row[col_merek]).strip()    if col_merek    and pd.notna(row[col_merek])    else None
             tipe      = str(row[col_tipe]).strip()     if col_tipe     and pd.notna(row[col_tipe])     else None
             nama_bil  = str(row[col_nama_bil]).strip() if col_nama_bil and pd.notna(row[col_nama_bil]) else None
+            unit      = str(row[col_unit]).strip()     if col_unit     and pd.notna(row[col_unit])     else None
+            kode_nama_biller = str(row[col_kode_nama_bil]).strip() if col_kode_nama_bil and pd.notna(row[col_kode_nama_bil]) else None
 
             rec = VerificationRecord(
                 session_id=session_id,
                 id_pelanggan=id_pel,
+                unit=unit,
+                kode_nama_biller=kode_nama_biller,
                 record_type=record_type,
                 stand_ai=stand_ai,
                 stand_petugas=stand_bil,
@@ -194,12 +200,33 @@ def get_session(session_id: int, db: Session = Depends(get_db)):
     }
 
 
+def background_delete_session(session_id: int):
+    from app.database import SessionLocal
+    from app.models import AssignmentBatch
+    db = SessionLocal()
+    try:
+        # Delete related assignment batches first to maintain integrity if applicable
+        db.query(AssignmentBatch).filter_by(session_id=session_id).delete(synchronize_session=False)
+        # Physically delete the verification records to free up space
+        db.query(VerificationRecord).filter_by(session_id=session_id).delete(synchronize_session=False)
+        # Finally delete the session
+        session = db.query(UploadSession).filter_by(id=session_id).first()
+        if session:
+            db.delete(session)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+    finally:
+        db.close()
+
 @router.delete("/sessions/{session_id}")
-def delete_session(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_session(session_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     session = db.query(UploadSession).filter_by(id=session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
-    db.query(VerificationRecord).filter_by(session_id=session_id).update({"is_deleted": True})
-    db.delete(session)
+    
+    session.status = "deleting"
     db.commit()
-    return {"message": "Sesi berhasil dihapus"}
+    
+    background_tasks.add_task(background_delete_session, session_id)
+    return {"message": "Sesi sedang dihapus di latar belakang"}

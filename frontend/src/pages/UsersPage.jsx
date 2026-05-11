@@ -13,9 +13,10 @@ export default function UsersPage() {
     const qc = useQueryClient()
     const [activeTab, setActiveTab] = useState('akun') // 'akun' | 'alasan'
     const [showForm, setShowForm] = useState(false)
-    const [form, setForm] = useState({ username: '', password: '', full_name: '', role: 'verifikator' })
+    const [form, setForm] = useState({ username: '', password: '', full_name: '', role: 'verifikator', unit_penugasan: '' })
     const [reasonForm, setReasonForm] = useState({ value: '', label: '', sort_order: 0 })
     const [showReasonForm, setShowReasonForm] = useState(false)
+    const [dialog, setDialog] = useState(null)
 
     const { data: users = [], isLoading } = useQuery({
         queryKey: ['users'],
@@ -33,7 +34,7 @@ export default function UsersPage() {
             toast.success('User berhasil dibuat')
             qc.invalidateQueries(['users'])
             setShowForm(false)
-            setForm({ username: '', password: '', full_name: '', role: 'verifikator' })
+            setForm({ username: '', password: '', full_name: '', role: 'verifikator', unit_penugasan: '' })
         },
         onError: () => toast.error('Gagal membuat user'),
     })
@@ -48,6 +49,12 @@ export default function UsersPage() {
         mutationFn: ({ id, new_password }) => api.put(`/api/users/${id}/password`, { new_password }),
         onSuccess: () => toast.success('Password berhasil diubah'),
         onError: () => toast.error('Gagal mengubah password'),
+    })
+
+    const editUser = useMutation({
+        mutationFn: ({ id, ...data }) => api.patch(`/api/users/${id}`, data),
+        onSuccess: () => { toast.success('Data user diperbarui'); qc.invalidateQueries(['users']) },
+        onError: () => toast.error('Gagal memperbarui user'),
     })
 
     const createReason = useMutation({
@@ -71,6 +78,43 @@ export default function UsersPage() {
 
     return (
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+            {dialog && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: '#fff', borderRadius: 10, width: 400, maxWidth: '90%', padding: 24, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+                        <h3 style={{ margin: '0 0 12px 0', fontSize: 16, color: '#0f172a' }}>{dialog.title}</h3>
+                        <p style={{ margin: '0 0 20px 0', fontSize: 13, color: '#475569', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{dialog.message}</p>
+                        
+                        {dialog.type === 'prompt' && (
+                            <input
+                                autoFocus
+                                defaultValue={dialog.defaultValue}
+                                placeholder={dialog.placeholder}
+                                id="dialog-input"
+                                style={{ width: '100%', height: 38, padding: '0 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, marginBottom: 20, boxSizing: 'border-box', outline: 'none' }}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        dialog.onConfirm(e.target.value)
+                                        setDialog(null)
+                                    }
+                                }}
+                            />
+                        )}
+                        
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                            <button onClick={() => setDialog(null)} style={{ padding: '8px 16px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Batal</button>
+                            <button 
+                                onClick={() => {
+                                    const val = dialog.type === 'prompt' ? document.getElementById('dialog-input').value : true;
+                                    dialog.onConfirm(val)
+                                    setDialog(null)
+                                }} 
+                                style={{ padding: '8px 16px', background: dialog.danger ? '#ef4444' : '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+                                Konfirmasi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                 <div>
                     <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.4px', margin: 0 }}>Pengaturan Sistem</h1>
@@ -119,6 +163,14 @@ export default function UsersPage() {
                                 <option value="admin">Admin</option>
                             </select>
                         </div>
+                        <div>
+                            <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Unit Penugasan (Opsional)</label>
+                            <input
+                                type="text" value={form.unit_penugasan} placeholder="Cth: 17100, 17110"
+                                onChange={e => setForm(f => ({ ...f, unit_penugasan: e.target.value }))}
+                                style={inputStyle}
+                            />
+                        </div>
                     </div>
                     <button
                         onClick={() => createUser.mutate(form)}
@@ -142,7 +194,7 @@ export default function UsersPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                                 <tr style={{ background: '#f8fafc' }}>
-                                    {['Nama Lengkap', 'Username', 'Role', ''].map(h => (
+                                    {['Nama Lengkap', 'Username', 'Role', 'Unit', ''].map(h => (
                                         <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -162,18 +214,36 @@ export default function UsersPage() {
                                                 {u.role}
                                             </span>
                                         </td>
+                                        <td style={{ padding: '12px 16px', color: '#64748b', fontSize: 11, fontWeight: 500 }}>
+                                            {u.unit_penugasan || '—'}
+                                        </td>
                                         <td style={{ padding: '12px 16px', display: 'flex', gap: 6 }}>
                                             <button
-                                                onClick={() => {
-                                                    const newPass = prompt(`Masukkan password baru untuk user "${u.username}":`)
-                                                    if (newPass) resetPassword.mutate({ id: u.id, new_password: newPass })
-                                                }}
+                                                onClick={() => setDialog({
+                                                    type: 'prompt', title: 'Atur Unit Penugasan',
+                                                    message: `Masukkan Unit untuk user "${u.username}":\n(Pisahkan dengan koma jika lebih dari 1, contoh: 17100, 17110)`,
+                                                    defaultValue: u.unit_penugasan || '',
+                                                    onConfirm: (val) => { if(val !== null) editUser.mutate({ id: u.id, unit_penugasan: val }) }
+                                                })}
+                                                style={{ background: 'none', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
+                                                Set Unit
+                                            </button>
+                                            <button
+                                                onClick={() => setDialog({
+                                                    type: 'prompt', title: 'Ubah Sandi',
+                                                    message: `Masukkan password baru untuk user "${u.username}":`,
+                                                    onConfirm: (val) => { if(val) resetPassword.mutate({ id: u.id, new_password: val }) }
+                                                })}
                                                 style={{ background: 'none', color: '#3b82f6', border: '1px solid #bfdbfe', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
                                                 Ubah Sandi
                                             </button>
                                             {u.username !== 'admin' && (
                                                 <button
-                                                    onClick={() => { if (confirm(`Hapus user "${u.username}"?`)) deleteUser.mutate(u.id) }}
+                                                    onClick={() => setDialog({
+                                                        type: 'confirm', title: 'Hapus User', danger: true,
+                                                        message: `Apakah Anda yakin ingin menghapus user "${u.username}"?`,
+                                                        onConfirm: () => deleteUser.mutate(u.id)
+                                                    })}
                                                     style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
                                                     Hapus
                                                 </button>
@@ -244,7 +314,11 @@ export default function UsersPage() {
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                                    <button onClick={() => { if (confirm(`Hapus alasan "${r.label}"?`)) deleteReason.mutate(r.id) }} style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
+                                                    <button onClick={() => setDialog({
+                                                        type: 'confirm', title: 'Hapus Alasan', danger: true,
+                                                        message: `Hapus alasan "${r.label}"?`,
+                                                        onConfirm: () => deleteReason.mutate(r.id)
+                                                    })} style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
                                                         Hapus
                                                     </button>
                                                 </td>

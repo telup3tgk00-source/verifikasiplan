@@ -162,7 +162,7 @@ function AcmtSessionPanel() {
 
     const handleSave = async () => {
         if (!fields.JSESSIONID.trim()) {
-            alert('JSESSIONID wajib diisi')
+            toast.error('JSESSIONID wajib diisi')
             return
         }
         // Rakit cookie string — skip field yang kosong
@@ -177,7 +177,7 @@ function AcmtSessionPanel() {
             setFields({ JSESSIONID: '', Pool_ACMTJava: '', TS017170f7: '', TS01be508d: '' })
             setShowForm(false)
             await loadStatus()
-        } catch (e) { alert('Gagal menyimpan: ' + (e.response?.data?.detail || e.message)) }
+        } catch (e) { toast.error('Gagal menyimpan: ' + (e.response?.data?.detail || e.message)) }
         finally { setSaving(false) }
     }
 
@@ -324,11 +324,12 @@ export default function VerifikasiPage() {
         queryFn: () => api.get('/api/upload/sessions').then(r => r.data)
     })
 
-    // Tentukan bulan ACMT yang aktif:
-    // 1. Prioritas: bulan_verifikasi dari sesi yang dipilih di filter
-    // 2. Fallback: bulan kalender berjalan (untuk sesi lama yang belum punya bulan_verifikasi)
+    // 1. Prioritas: bulan_verifikasi dari record yang sedang dibuka (jika ada)
+    // 2. Fallback: bulan_verifikasi dari filter sesi, atau bulan kalender
     const selectedSession = sessions.find(s => String(s.id) === String(filter.sessionId))
-    const activeBulan = selectedSession?.bulan_verifikasi || blthList[0]
+    const activeBulan = (selected ? sessions.find(s => s.id === selected.session_id)?.bulan_verifikasi : null) 
+                        || selectedSession?.bulan_verifikasi 
+                        || blthList[0]
 
     const handleFotoClick = async (idpel, blth, fotoke) => {
         setActiveFoto({ idpel, blth, fotoke, loading: true, url: null, error: null })
@@ -378,14 +379,23 @@ export default function VerifikasiPage() {
             reason_type: reasonType || null,
             corrected_stand: correctedStand ? parseFloat(correctedStand) : null,
         }),
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             toast.success('Data berhasil disimpan')
             qc.invalidateQueries(['records'])
             qc.invalidateQueries(['dashboard-stats'])
-            setSelected(null)
-            setNote('')
-            setReasonType('')
-            setCorrectedStand('')
+            
+            // Cari index record saat ini di list
+            const currentIndex = records.findIndex(r => r.id === variables.id)
+            if (currentIndex !== -1 && currentIndex < records.length - 1) {
+                // Ada record berikutnya, otomatis buka
+                openModal(records[currentIndex + 1])
+            } else {
+                // Jika sudah di ujung / terakhir, baru tutup
+                setSelected(null)
+                setNote('')
+                setReasonType('')
+                setCorrectedStand('')
+            }
         },
         onError: () => toast.error('Gagal menyimpan'),
     })
@@ -486,7 +496,7 @@ export default function VerifikasiPage() {
                                 <span style={{ padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontFamily: 'monospace' }}>
                                     {activeBulan.slice(0, 4)}/{activeBulan.slice(4)}
                                 </span>
-                                {!selectedSession?.bulan_verifikasi && filter.sessionId && (
+                                {!((selected ? sessions.find(s => s.id === selected.session_id)?.bulan_verifikasi : null) || selectedSession?.bulan_verifikasi) && (
                                     <span style={{ fontSize: 10, color: '#d97706' }} title="Batch ini diupload sebelum fitur kunci bulan, menggunakan bulan kalender sebagai fallback">⚠</span>
                                 )}
                             </div>
@@ -631,7 +641,7 @@ export default function VerifikasiPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                                 <tr style={{ background: '#f8fafc' }}>
-                                    {['ID Pelanggan', 'Stand AI', 'Stand Biller', 'Selisih', 'Merek AI / Biller', 'Alasan', 'Status', 'Foto', ''].map(h => (
+                                    {['Unit', 'ID Pelanggan', 'Kode Biller', 'Stand AI', 'Stand Biller', 'Selisih', 'Merek AI / Biller', 'Alasan', 'Status', 'Foto', ''].map(h => (
                                         <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -639,7 +649,9 @@ export default function VerifikasiPage() {
                             <tbody>
                                 {records.map(r => (
                                     <tr key={r.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '10px 16px', color: '#64748b', fontSize: 11 }}>{r.unit || '—'}</td>
                                         <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0f172a' }}>{r.id_pelanggan}</td>
+                                        <td style={{ padding: '10px 16px', color: '#64748b', fontSize: 11 }}>{r.kode_nama_biller || '—'}</td>
                                         <td style={{ padding: '10px 16px', color: '#374151' }}>
                                             {r.corrected_stand != null ? (
                                                 <span>

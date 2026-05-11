@@ -97,22 +97,34 @@ from app.routers.auth import get_current_user
 from app.models import User
 
 @app.get("/api/dashboard/stats")
-def dashboard_stats(current_user: User = Depends(get_current_user)):
+def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_user)):
     from app.database import SessionLocal
     db = SessionLocal()
     try:
         from app.models import VerificationRecord, StatusEnum, UploadSession
-        total = db.query(VerificationRecord).filter_by(is_deleted=False).count()
-        pending = db.query(VerificationRecord).filter_by(status=StatusEnum.PENDING, is_deleted=False).count()
-        ok = db.query(VerificationRecord).filter_by(status=StatusEnum.VERIFIED_OK, is_deleted=False).count()
-        reject = db.query(VerificationRecord).filter_by(status=StatusEnum.VERIFIED_REJECT, is_deleted=False).count()
-        inv = db.query(VerificationRecord).filter_by(status=StatusEnum.NEED_INVESTIGATION, is_deleted=False).count()
-        anomaly = db.query(VerificationRecord).filter_by(is_anomaly=True, is_deleted=False).count()
+        
+        # Base query for records
+        query = db.query(VerificationRecord).filter(VerificationRecord.is_deleted == False)
+        
+        if bulan:
+            query = query.join(UploadSession, VerificationRecord.session_id == UploadSession.id)\
+                         .filter(UploadSession.bulan_verifikasi == bulan)
+                         
+        total = query.count()
+        pending = query.filter(VerificationRecord.status == StatusEnum.PENDING).count()
+        ok = query.filter(VerificationRecord.status == StatusEnum.VERIFIED_OK).count()
+        reject = query.filter(VerificationRecord.status == StatusEnum.VERIFIED_REJECT).count()
+        inv = query.filter(VerificationRecord.status == StatusEnum.NEED_INVESTIGATION).count()
+        anomaly = query.filter(VerificationRecord.is_anomaly == True).count()
         
         pct = round((ok + reject + inv) / total * 100, 1) if total > 0 else 0
         
         # Data untuk chart: Progres per sesi
-        sessions = db.query(UploadSession).order_by(UploadSession.id.desc()).limit(5).all()
+        session_query = db.query(UploadSession)
+        if bulan:
+            session_query = session_query.filter(UploadSession.bulan_verifikasi == bulan)
+        sessions = session_query.order_by(UploadSession.id.desc()).limit(5).all()
+        
         chart_data = []
         for s in sessions:
             s_total = db.query(VerificationRecord).filter_by(session_id=s.id, is_deleted=False).count()

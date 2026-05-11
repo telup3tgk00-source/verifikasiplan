@@ -20,12 +20,14 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
     role: RoleEnum = RoleEnum.verifikator
+    unit_penugasan: Optional[str] = None
 
 class UserOut(BaseModel):
     id: int
     username: str
     full_name: str
     role: RoleEnum
+    unit_penugasan: Optional[str]
     is_active: bool
     created_at: datetime
 
@@ -35,7 +37,10 @@ class UserOut(BaseModel):
 # ── RECORD ────────────────────────────────────────
 class RecordOut(BaseModel):
     id: int
+    session_id: int
     id_pelanggan: str
+    unit: Optional[str]
+    kode_nama_biller: Optional[str]
     record_type: Optional[str] = "beda"
     stand_ai: Optional[float]
     stand_petugas: Optional[float]

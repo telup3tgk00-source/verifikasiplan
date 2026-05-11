@@ -31,6 +31,7 @@ class User(Base):
     password_hash = Column(Text, nullable=False)
     full_name = Column(String(100))
     role = Column(Enum(RoleEnum), default=RoleEnum.operator)
+    unit_penugasan = Column(String(200), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -59,6 +60,8 @@ class VerificationRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(Integer, ForeignKey("upload_sessions.id"))
     id_pelanggan = Column(String(50), index=True)
+    unit = Column(String(50), nullable=True)
+    kode_nama_biller = Column(String(200), nullable=True)
     record_type = Column(String(10), default="beda")  # "match" | "beda"
     stand_ai = Column(Float, nullable=True)
     stand_petugas = Column(Float, nullable=True)       # Stand Biller
