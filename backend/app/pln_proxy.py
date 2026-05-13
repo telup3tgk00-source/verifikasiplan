@@ -81,6 +81,7 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str) -> tuple[bytes, str]:
         "fotoke":      fotoke,
         "blth":        blth,
         "isPhoto":     "null",
+        "unitup":      "17130"
     }
 
     headers = {
@@ -128,11 +129,10 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str) -> tuple[bytes, str]:
     # ─── Redirect → session/cookie expired ────────────────────────────────────
     if status_code in (301, 302, 303, 307, 308):
         location = resp.headers.get("location", "")
-        logger.warning("Redirect ke: %s — cookie mungkin expired", location)
-        _session_cache["cookie_string"] = None
+        logger.warning("Redirect ke: %s — cookie mungkin expired (atau foto tidak ada)", location)
+        # Jangan langsung hapus _session_cache["cookie_string"] karena bisa jadi hanya foto yang tidak ada!
         raise RuntimeError(
-            "SESSION_EXPIRED: Cookie ACMT sudah kadaluarsa. "
-            "Login ulang di browser dan update cookie di panel Sesi ACMT."
+            "SESSION_EXPIRED: ACMT merespon Redirect (foto tidak ditemukan atau sesi kadaluarsa)."
         )
 
     # ─── Server Error ─────────────────────────────────────────────────────────
