@@ -8,7 +8,19 @@ router = APIRouter()
 
 @router.post("/")
 def assign_tasks(req: AssignmentRequest, db: Session = Depends(get_db)):
-    # 1. Ambil record yang belum diassign
+    # 0. Hapus AssignmentBatch lama untuk sesi ini agar tidak menumpuk
+    db.query(AssignmentBatch).filter_by(session_id=req.session_id).delete(synchronize_session=False)
+    db.commit()
+
+    # 1. Reset semua assigned_to ke None agar bisa di-reassign bersih
+    db.query(VerificationRecord).filter_by(
+        session_id=req.session_id,
+        is_deleted=False,
+        record_type="beda"
+    ).update({"assigned_to": None}, synchronize_session=False)
+    db.commit()
+
+    # 2. Ambil record yang belum diassign
     query = db.query(VerificationRecord).filter_by(
         session_id=req.session_id,
         is_deleted=False,
@@ -136,9 +148,25 @@ def assign_tasks(req: AssignmentRequest, db: Session = Depends(get_db)):
 
 @router.get("/progress")
 def get_progress(session_id: int, db: Session = Depends(get_db)):
+    from app.models import User
+    from sqlalchemy import func
+
+    # Ambil set user_id yang masih ada di DB
+    existing_user_ids = {u.id for u in db.query(User.id).all()}
+
     batches = db.query(AssignmentBatch).filter_by(session_id=session_id).all()
-    result = []
+
+    # Deduplikasi per operator_id — ambil yang total_assigned terbesar
+    seen = {}
     for b in batches:
+        # Skip ghost user (sudah dihapus)
+        if b.operator_id not in existing_user_ids:
+            continue
+        if b.operator_id not in seen or b.total_assigned > seen[b.operator_id].total_assigned:
+            seen[b.operator_id] = b
+
+    result = []
+    for b in seen.values():
         selesai = db.query(VerificationRecord).filter(
             VerificationRecord.session_id == session_id,
             VerificationRecord.assigned_to == b.operator_id,
