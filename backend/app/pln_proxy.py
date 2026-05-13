@@ -96,12 +96,27 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str) -> tuple[bytes, str]:
     ) as client:
         resp = await client.get(PHOTO_URL, params=params, headers=headers)
 
+    # Tangkap jika server ACMT merotasi cookie (misal: TS01)
+    if resp.cookies:
+        current_cookies = {}
+        for pair in cookie_string.split(";"):
+            if "=" in pair:
+                k, v = pair.strip().split("=", 1)
+                current_cookies[k] = v
+        
+        updated = False
+        for k, v in resp.cookies.items():
+            if current_cookies.get(k) != v:
+                current_cookies[k] = v
+                updated = True
+                logger.info("ACMT Server rotated cookie: %s", k)
+        
+        if updated:
+            new_cookie_string = "; ".join(f"{k}={v}" for k, v in current_cookies.items())
+            _session_cache["cookie_string"] = new_cookie_string
+
     content_type = resp.headers.get("content-type", "").lower()
     status_code  = resp.status_code
-
-    print(f"[FOTO] Response status dari ACMT: {status_code}")
-    print(f"[FOTO] Content-type: {resp.headers.get('content-type')}")
-    print(f"[FOTO] Response size: {len(resp.content)} bytes")
 
     logger.info(
         "ACMT [%d] ct=%s size=%d — idpel=%s blth=%s fotoke=%s",
@@ -142,22 +157,18 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str) -> tuple[bytes, str]:
             f"(idpel={idpel} blth={blth} fotoke={fotoke})"
         )
 
-    # ─── HTML → kemungkinan foto tidak ada atau sesi habis ───────────────────
-    # CATATAN: Jangan hapus cookie secara global di sini!
-    # Halaman HTML ACMT SELALU mengandung kata "login" di navbar/navigasi,
-    # meski sesi masih valid. Menghapus cookie global berarti 1 foto error
-    # akan mematikan akses semua pengguna. Biarkan heartbeat ekstensi yang refresh cookie.
+    # ─── HTML → halaman login atau error ──────────────────────────────────────
     if "text/html" in content_type or status_code in (401, 403):
         body = resp.text[:400] if resp.content else ""
-        logger.warning("Response HTML/401 (idpel=%s): %s", idpel, body[:150])
-        if any(k in body.lower() for k in ("j_username", "captcha")):
-            # Ini betul-betul halaman login (bukan sekedar HTML yang ada kata "login")
+        logger.warning("Response HTML/401: %s", body[:200])
+        if any(k in body.lower() for k in ("login", "captcha", "j_username")):
+            _session_cache["cookie_string"] = None
             raise RuntimeError(
-                "SESSION_EXPIRED: Cookie ACMT kadaluarsa (halaman login terdeteksi). "
-                "Lakukan Force Sync di ekstensi atau Set Cookie ACMT manual."
+                "SESSION_EXPIRED: Cookie ACMT sudah kadaluarsa. "
+                "Login ulang di browser dan update cookie di panel Sesi ACMT."
             )
         raise RuntimeError(
-            f"Foto tidak tersedia atau sesi bermasalah (idpel={idpel} blth={blth} fotoke={fotoke})"
+            f"Foto tidak tersedia (idpel={idpel} blth={blth} fotoke={fotoke})"
         )
 
     # ─── Lainnya ──────────────────────────────────────────────────────────────
