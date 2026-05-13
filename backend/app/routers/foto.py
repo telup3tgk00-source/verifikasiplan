@@ -65,15 +65,28 @@ def sync_cookie_from_extension(payload: ExtensionSyncPayload):
     return {"ok": True, "message": "Cookie berhasil disync dari Ekstensi", "cookie_keys": status["cookie_keys"]}
 
 
+from fastapi import Request
+import urllib.parse
+
 @router.get("/foto")
 async def get_foto_meter(
+    request: Request,
     idpel:  str = Query(...),
     blth:   str = Query(...),
     fotoke: str = Query(...),
 ):
     """Proxy foto meter dari ACMT PLN ICONPLN."""
+    # Ambil cookie personal dari browser client jika ada (hasil inject Ekstensi)
+    client_cookie_raw = request.cookies.get("metrik_acmt_session")
+    client_cookie = urllib.parse.unquote(client_cookie_raw) if client_cookie_raw else None
+
     try:
-        image_bytes, content_type = await fetch_photo(idpel=idpel, blth=blth, fotoke=fotoke)
+        image_bytes, content_type = await fetch_photo(
+            idpel=idpel, 
+            blth=blth, 
+            fotoke=fotoke, 
+            client_cookie=client_cookie
+        )
         return Response(
             content=image_bytes,
             media_type=content_type or "image/jpeg",

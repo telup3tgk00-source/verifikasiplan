@@ -58,21 +58,24 @@ def get_session_status() -> dict:
     }
 
 
-async def fetch_photo(idpel: str, blth: str, fotoke: str) -> tuple[bytes, str]:
+async def fetch_photo(idpel: str, blth: str, fotoke: str, client_cookie: str = None) -> tuple[bytes, str]:
     """
     Ambil foto meter dari ACMT PLN.
     Forward SEMUA cookie yang disimpan ke ICONPLN.
     """
-    cookie_string = _session_cache.get("cookie_string")
+    cookie_string = client_cookie or _session_cache.get("cookie_string")
     
     print(f"[FOTO] idpel={idpel} blth={blth} fotoke={fotoke}")
-    print(f"[FOTO] Cookie cache isi: {list(_session_cache.keys())}")
-    print(f"[FOTO] Cookie value ada: {bool(cookie_string)}")
+    if client_cookie:
+        print("[FOTO] Menggunakan cookie personal dari browser client!")
+    else:
+        print(f"[FOTO] Cookie cache isi: {list(_session_cache.keys())}")
+        print(f"[FOTO] Cookie value ada: {bool(cookie_string)}")
     
     if not cookie_string:
         raise RuntimeError(
             "Cookie ACMT belum diset. "
-            "Login ke ACMT di browser → F12 → Network → copy semua cookie → paste di panel Sesi ACMT."
+            "Pastikan Ekstensi Chrome Metrik berjalan atau sinkronkan sesi."
         )
 
     params = {
