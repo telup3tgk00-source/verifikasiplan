@@ -316,6 +316,7 @@ export default function VerifikasiPage() {
     const [correctedStand, setCorrectedStand] = useState('')
     const [activeFoto, setActiveFoto] = useState(null)   // { idpel, blth, fotoke, loading, url, error }
     const [expandedFoto, setExpandedFoto] = useState(null) // idpel yang sedang di-expand
+    const [pendingAutoOpen, setPendingAutoOpen] = useState(false) // auto-buka record pertama setelah ganti page
 
     const blthList = getBlthList()
 
@@ -372,6 +373,18 @@ export default function VerifikasiPage() {
         }).then(r => r.data),
     })
 
+    // Auto-buka record pertama setelah pindah page (cross-page navigation)
+    useEffect(() => {
+        if (pendingAutoOpen && !isLoading && records.length > 0) {
+            openModal(records[0])
+            setPendingAutoOpen(false)
+        } else if (pendingAutoOpen && !isLoading && records.length === 0) {
+            // Tidak ada record lagi di page berikutnya
+            setPendingAutoOpen(false)
+            toast.success('Semua data di halaman ini sudah selesai dikerjakan! 🎉')
+        }
+    }, [records, isLoading, pendingAutoOpen])
+
     const verifyMutation = useMutation({
         mutationFn: ({ id, status, note, reasonType, correctedStand }) => api.patch(`/api/records/${id}`, {
             status,
@@ -384,13 +397,21 @@ export default function VerifikasiPage() {
             qc.invalidateQueries(['records'])
             qc.invalidateQueries(['dashboard-stats'])
             
-            // Cari index record saat ini di list
             const currentIndex = records.findIndex(r => r.id === variables.id)
             if (currentIndex !== -1 && currentIndex < records.length - 1) {
-                // Ada record berikutnya, otomatis buka
+                // Ada record berikutnya di page ini, otomatis buka
                 openModal(records[currentIndex + 1])
+            } else if (currentIndex === records.length - 1 && records.length >= 20) {
+                // Record terakhir di page ini, kemungkinan ada page berikutnya
+                setSelected(null)
+                setNote('')
+                setReasonType('')
+                setCorrectedStand('')
+                setPage(p => p + 1)
+                setPendingAutoOpen(true)
+                toast.info('Lanjut ke halaman berikutnya...')
             } else {
-                // Jika sudah di ujung / terakhir, baru tutup
+                // Benar-benar record terakhir
                 setSelected(null)
                 setNote('')
                 setReasonType('')
@@ -414,6 +435,11 @@ export default function VerifikasiPage() {
         const newIdx = idx + direction
         if (newIdx >= 0 && newIdx < records.length) {
             openModal(records[newIdx])
+        } else if (direction === 1 && idx === records.length - 1 && records.length >= 20) {
+            // Record terakhir di page, coba lanjut ke page berikutnya
+            setSelected(null)
+            setPage(p => p + 1)
+            setPendingAutoOpen(true)
         }
     }
 
@@ -515,10 +541,12 @@ export default function VerifikasiPage() {
                                 </button>
                                 <button
                                     onClick={() => navigateModal(1)}
-                                    disabled={records.findIndex(r => r.id === selected.id) >= records.length - 1}
-                                    style={{ flex: 1, padding: '8px 0', border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc', color: '#475569', fontSize: 12, fontWeight: 600, cursor: records.findIndex(r => r.id === selected.id) >= records.length - 1 ? 'not-allowed' : 'pointer', opacity: records.findIndex(r => r.id === selected.id) >= records.length - 1 ? 0.5 : 1 }}
+                                    disabled={records.findIndex(r => r.id === selected.id) >= records.length - 1 && records.length < 20}
+                                    style={{ flex: 1, padding: '8px 0', border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc', color: '#475569', fontSize: 12, fontWeight: 600, cursor: (records.findIndex(r => r.id === selected.id) >= records.length - 1 && records.length < 20) ? 'not-allowed' : 'pointer', opacity: (records.findIndex(r => r.id === selected.id) >= records.length - 1 && records.length < 20) ? 0.5 : 1 }}
                                 >
-                                    Berikutnya &rarr;
+                                    {records.findIndex(r => r.id === selected.id) === records.length - 1 && records.length >= 20
+                                        ? 'Hal. Berikutnya →'
+                                        : 'Berikutnya →'}
                                 </button>
                             </div>
                         </div>
