@@ -112,7 +112,7 @@ export default function Layout() {
                         <Outlet />
                     </div>
                     <footer style={{ padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 12, textAlign: 'center', flexShrink: 0 }}>
-                        &copy; {new Date().getFullYear()} METRIK &mdash; Sistem Verifikasi Meter KWH. All rights reserved.
+                        &copy; {new Date().getFullYear()} METRIK PT PLN (Persero) UP3 Tanjung Karang &mdash; Sistem Verifikasi KWH Meter. All rights reserved.
                     </footer>
                 </div>
             </div>
