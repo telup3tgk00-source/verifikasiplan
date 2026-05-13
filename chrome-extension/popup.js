@@ -1,20 +1,20 @@
 document.addEventListener("DOMContentLoaded", () => {
     const metrikUrlInput = document.getElementById("metrikUrl");
-    const secretKeyInput = document.getElementById("secretKey");
+    const autoSyncToggle = document.getElementById("autoSyncToggle");
     const saveBtn = document.getElementById("saveBtn");
     const syncNowBtn = document.getElementById("syncNowBtn");
     const statusDiv = document.getElementById("status");
 
     // Load saved settings
-    chrome.storage.sync.get(["metrikUrl", "secretKey"], (data) => {
+    chrome.storage.sync.get(["metrikUrl", "autoSyncEnabled"], (data) => {
         if (data.metrikUrl) metrikUrlInput.value = data.metrikUrl;
-        if (data.secretKey) secretKeyInput.value = data.secretKey;
+        autoSyncToggle.checked = !!data.autoSyncEnabled;
     });
 
     saveBtn.addEventListener("click", () => {
         chrome.storage.sync.set({
             metrikUrl: metrikUrlInput.value,
-            secretKey: secretKeyInput.value
+            autoSyncEnabled: autoSyncToggle.checked
         }, () => {
             showStatus("Pengaturan disimpan!", "green");
         });
@@ -32,28 +32,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            let apiUrl = metrikUrlInput.value.replace(/\/$/, "") + "/api/foto/sync-extension";
+            let targetUrl = metrikUrlInput.value.replace(/\/$/, "");
             
-            fetch(apiUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    cookie_string: cookieString,
-                    secret_key: secretKeyInput.value
-                })
-            })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
+            // Tanamkan cookie ACMT ke dalam browser untuk domain Metrik
+            chrome.cookies.set({
+                url: targetUrl,
+                name: "metrik_acmt_session",
+                value: encodeURIComponent(cookieString),
+                path: "/"
+            }, function(cookie) {
+                if (chrome.runtime.lastError) {
+                    showStatus("❌ Gagal menanam cookie di browser!", "red");
+                    console.error("Set Cookie Error:", chrome.runtime.lastError);
+                } else {
+                    showStatus("✅ Berhasil disinkronkan ke browser Anda!", "green");
                 }
-                return res.json();
-            })
-            .then(data => {
-                showStatus("✅ Berhasil disinkronkan!", "green");
-            })
-            .catch(err => {
-                showStatus("❌ Gagal sync! Cek Server METRIK / Secret Key.", "red");
-                console.error("Sync Error:", err);
             });
         });
     });

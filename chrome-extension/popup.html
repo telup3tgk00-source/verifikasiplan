@@ -62,15 +62,18 @@
 </head>
 <body>
     <h3>METRIK Auto-Sync</h3>
-    <label>URL Backend METRIK:</label>
-    <input type="text" id="metrikUrl" placeholder="http://localhost:8000">
-    
-    <label>Secret Key:</label>
-    <input type="password" id="secretKey" placeholder="metrik-sync-2026">
+    <label>URL Frontend METRIK:</label>
+    <input type="text" id="metrikUrl" placeholder="https://metrikpln.co.id">
     
     <button id="saveBtn">Simpan Pengaturan</button>
     <hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;">
-    <button id="syncNowBtn">Force Sync Sekarang</button>
+    
+    <label style="display: flex; align-items: center; cursor: pointer; justify-content: space-between;">
+        <span>Aktifkan Auto-Sync (1 menit)</span>
+        <input type="checkbox" id="autoSyncToggle" style="width: auto; margin: 0; transform: scale(1.2);">
+    </label>
+    
+    <button id="syncNowBtn" style="margin-top: 15px;">Force Sync Sekarang</button>
     
     <div id="status"></div>
     
