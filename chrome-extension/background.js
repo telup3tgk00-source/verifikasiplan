@@ -50,13 +50,24 @@ function syncToMetrik(cookieString) {
         }
 
         let targetUrl = data.metrikUrl.replace(/\/$/, "");
+        let urlObj;
+        try {
+            urlObj = new URL(targetUrl);
+        } catch(e) {
+            console.error("Invalid URL:", targetUrl);
+            return;
+        }
+        let domainName = urlObj.hostname.replace("www.", "");
 
         // Tanamkan cookie ACMT ke dalam browser untuk domain Metrik
         chrome.cookies.set({
             url: targetUrl,
             name: "metrik_acmt_session",
             value: encodeURIComponent(cookieString),
-            path: "/"
+            domain: "." + domainName,
+            path: "/",
+            secure: true,
+            sameSite: "no_restriction"
         }, function(cookie) {
             if (chrome.runtime.lastError) {
                 console.error("Gagal menanam cookie ke Metrik:", chrome.runtime.lastError);

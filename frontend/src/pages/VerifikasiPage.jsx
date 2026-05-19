@@ -448,7 +448,7 @@ export default function VerifikasiPage() {
         verifyMutation.mutate({ id: selected.id, status, note, reasonType, correctedStand })
     }
 
-    const currentSelisih = selected && reasonType === 'ai_salah_baca' && correctedStand !== '' && selected.stand_petugas != null
+    const currentSelisih = selected && ['ai_salah_baca', 'foto_tidak_lurus'].includes(reasonType) && correctedStand !== '' && selected.stand_petugas != null
         ? Number(correctedStand) - Number(selected.stand_petugas)
         : (selected?.selisih ?? 0);
 
@@ -574,7 +574,7 @@ export default function VerifikasiPage() {
                                             <div key={k} style={{ marginBottom: 8 }}>
                                                 <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>{k}</div>
                                                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-                                                    {k === 'Stand KWH' && col.title === 'Hasil AI' && reasonType === 'ai_salah_baca' && correctedStand !== '' ? (
+                                                    {k === 'Stand KWH' && col.title === 'Hasil AI' && ['ai_salah_baca', 'foto_tidak_lurus'].includes(reasonType) && correctedStand !== '' ? (
                                                         <span>
                                                             <span style={{ color: '#16a34a' }}>{correctedStand}</span>
                                                             <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: 11, marginLeft: 6 }}>{v ?? '—'}</span>
@@ -619,8 +619,8 @@ export default function VerifikasiPage() {
                                 </select>
                             </div>
 
-                            {/* Stand koreksi (muncul jika ai_salah_baca) */}
-                            {reasonType === 'ai_salah_baca' && (
+                            {/* Stand koreksi (muncul jika ai_salah_baca atau foto_tidak_lurus) */}
+                            {['ai_salah_baca', 'foto_tidak_lurus'].includes(reasonType) && (
                                 <div style={{ marginBottom: 14 }}>
                                     <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
                                         Stand Koreksi (KWH)

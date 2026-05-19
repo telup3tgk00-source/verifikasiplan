@@ -33,13 +33,24 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             let targetUrl = metrikUrlInput.value.replace(/\/$/, "");
+            let urlObj;
+            try {
+                urlObj = new URL(targetUrl);
+            } catch(e) {
+                showStatus("URL METRIK tidak valid!", "red");
+                return;
+            }
+            let domainName = urlObj.hostname.replace("www.", "");
             
             // Tanamkan cookie ACMT ke dalam browser untuk domain Metrik
             chrome.cookies.set({
                 url: targetUrl,
                 name: "metrik_acmt_session",
                 value: encodeURIComponent(cookieString),
-                path: "/"
+                domain: "." + domainName,
+                path: "/",
+                secure: true,
+                sameSite: "no_restriction"
             }, function(cookie) {
                 if (chrome.runtime.lastError) {
                     showStatus("❌ Gagal menanam cookie di browser!", "red");
