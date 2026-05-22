@@ -309,7 +309,7 @@ export default function VerifikasiPage() {
         queryFn: () => api.get('/api/settings/reasons').then(r => r.data),
     })
     const [page, setPage] = useState(1)
-    const [filter, setFilter] = useState({ status: '', search: '', anomalyOnly: false, merekMismatch: false, sessionId: '' })
+    const [filter, setFilter] = useState({ status: '', search: '', anomalyOnly: false, merekMismatch: false, sessionId: '', unit: '', reasonType: '' })
     const [selected, setSelected] = useState(null)
     const [note, setNote] = useState('')
     const [reasonType, setReasonType] = useState('')
@@ -365,6 +365,8 @@ export default function VerifikasiPage() {
                 record_type: 'beda',   // Verifikasi hanya untuk data BEDA
                 status: filter.status || undefined,
                 search: filter.search || undefined,
+                unit: filter.unit || undefined,
+                reason_type: filter.reasonType || undefined,
                 anomaly_only: filter.anomalyOnly,
                 merek_mismatch: filter.merekMismatch,
                 assigned_to: role === 'verifikator' ? user?.id : undefined,
@@ -448,7 +450,10 @@ export default function VerifikasiPage() {
         verifyMutation.mutate({ id: selected.id, status, note, reasonType, correctedStand })
     }
 
-    const currentSelisih = selected && ['ai_salah_baca', 'foto_tidak_lurus'].includes(reasonType) && correctedStand !== '' && selected.stand_petugas != null
+    const currentReasonObj = reasons.find(o => o.value === reasonType);
+    const allowKoreksi = currentReasonObj?.requires_stand_correction || ['ai_salah_baca', 'foto_tidak_lurus'].includes(reasonType);
+
+    const currentSelisih = selected && allowKoreksi && correctedStand !== '' && selected.stand_petugas != null
         ? Number(correctedStand) - Number(selected.stand_petugas)
         : (selected?.selisih ?? 0);
 
@@ -480,7 +485,13 @@ export default function VerifikasiPage() {
                         placeholder="Cari ID Pelanggan..."
                         value={filter.search}
                         onChange={e => { setFilter(f => ({ ...f, search: e.target.value })); setPage(1) }}
-                        style={{ ...inputStyle, width: 160 }}
+                        style={{ ...inputStyle, width: 140 }}
+                    />
+                    <input
+                        placeholder="Cari Unit UP..."
+                        value={filter.unit}
+                        onChange={e => { setFilter(f => ({ ...f, unit: e.target.value })); setPage(1) }}
+                        style={{ ...inputStyle, width: 100 }}
                     />
                     <select
                         value={filter.sessionId}
@@ -502,6 +513,16 @@ export default function VerifikasiPage() {
                         <option value="">Semua Status</option>
                         {Object.entries(STATUS_LABEL).map(([val, label]) => (
                             <option key={val} value={val}>{label}</option>
+                        ))}
+                    </select>
+                    <select
+                        value={filter.reasonType}
+                        onChange={e => { setFilter(f => ({ ...f, reasonType: e.target.value })); setPage(1) }}
+                        style={{ ...inputStyle, paddingLeft: 10, maxWidth: 160 }}
+                    >
+                        <option value="">Semua Alasan</option>
+                        {reasons.map(r => (
+                            <option key={r.value} value={r.value}>{r.label}</option>
                         ))}
                     </select>
                 </div>
@@ -574,7 +595,7 @@ export default function VerifikasiPage() {
                                             <div key={k} style={{ marginBottom: 8 }}>
                                                 <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>{k}</div>
                                                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-                                                    {k === 'Stand KWH' && col.title === 'Hasil AI' && ['ai_salah_baca', 'foto_tidak_lurus'].includes(reasonType) && correctedStand !== '' ? (
+                                                    {k === 'Stand KWH' && col.title === 'Hasil AI' && allowKoreksi && correctedStand !== '' ? (
                                                         <span>
                                                             <span style={{ color: '#16a34a' }}>{correctedStand}</span>
                                                             <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: 11, marginLeft: 6 }}>{v ?? '—'}</span>
@@ -619,8 +640,8 @@ export default function VerifikasiPage() {
                                 </select>
                             </div>
 
-                            {/* Stand koreksi (muncul jika ai_salah_baca atau foto_tidak_lurus) */}
-                            {['ai_salah_baca', 'foto_tidak_lurus'].includes(reasonType) && (
+                            {/* Stand koreksi (muncul jika alasan mengizinkan) */}
+                            {allowKoreksi && (
                                 <div style={{ marginBottom: 14 }}>
                                     <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
                                         Stand Koreksi (KWH)

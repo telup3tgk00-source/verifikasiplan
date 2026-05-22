@@ -166,17 +166,36 @@ def get_sessions(db: Session = Depends(get_db), current_user: User = Depends(get
     sessions = q.all()
     result = []
     for s in sessions:
+        total_records = s.total_records
+        total_match = s.total_match
+        total_beda = s.total_beda
+        
+        # Jika verifikator, hitung ulang total tugas berdasarkan yang di-assign padanya
+        if current_user.role == RoleEnum.verifikator:
+            total_records = db.query(VerificationRecord).filter(
+                VerificationRecord.session_id == s.id,
+                VerificationRecord.assigned_to == current_user.id,
+                VerificationRecord.is_deleted == False
+            ).count()
+            total_match = db.query(VerificationRecord).filter(
+                VerificationRecord.session_id == s.id,
+                VerificationRecord.assigned_to == current_user.id,
+                VerificationRecord.record_type == 'match',
+                VerificationRecord.is_deleted == False
+            ).count()
+            total_beda = total_records - total_match
+            
         result.append({
             "id": s.id,
             "batch_name": s.batch_name,
             "bulan_verifikasi": s.bulan_verifikasi,
-            "file_match_name": s.file_match_name or s.file_ai_name,
-            "file_beda_name":  s.file_beda_name  or s.file_petugas_name,
+            "file_match_name": s.file_match_name or getattr(s, 'file_ai_name', None),
+            "file_beda_name":  s.file_beda_name  or getattr(s, 'file_petugas_name', None),
             "created_at": s.created_at,
             "status": s.status,
-            "total_records": s.total_records,
-            "total_match":   s.total_match,
-            "total_beda":    s.total_beda,
+            "total_records": total_records,
+            "total_match":   total_match,
+            "total_beda":    total_beda,
         })
     return result
 

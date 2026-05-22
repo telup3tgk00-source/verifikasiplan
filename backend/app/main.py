@@ -46,6 +46,12 @@ def run_migrations():
     except Exception:
         pass
 
+    # Check and add columns to reason_options
+    try:
+        db.execute(text("ALTER TABLE reason_options ADD COLUMN requires_stand_correction BOOLEAN DEFAULT 0"))
+    except Exception:
+        pass
+
     db.commit()
     db.close()
 
@@ -101,11 +107,15 @@ def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_
     from app.database import SessionLocal
     db = SessionLocal()
     try:
-        from app.models import VerificationRecord, StatusEnum, UploadSession
+        from app.models import VerificationRecord, StatusEnum, UploadSession, RoleEnum
         
         # Base query for records
         query = db.query(VerificationRecord).filter(VerificationRecord.is_deleted == False)
         
+        # Filter jika user adalah verifikator, hanya tampilkan tugasnya sendiri
+        if current_user.role == RoleEnum.verifikator:
+            query = query.filter(VerificationRecord.assigned_to == current_user.id)
+            
         if bulan:
             query = query.join(UploadSession, VerificationRecord.session_id == UploadSession.id)\
                          .filter(UploadSession.bulan_verifikasi == bulan)
@@ -127,12 +137,24 @@ def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_
         
         chart_data = []
         for s in sessions:
-            s_total = db.query(VerificationRecord).filter_by(session_id=s.id, is_deleted=False).count()
-            s_done = db.query(VerificationRecord).filter(
+            s_total_q = db.query(VerificationRecord).filter_by(session_id=s.id, is_deleted=False)
+            s_done_q = db.query(VerificationRecord).filter(
                 VerificationRecord.session_id == s.id,
                 VerificationRecord.status != StatusEnum.PENDING,
                 VerificationRecord.is_deleted == False
-            ).count()
+            )
+            
+            if current_user.role == RoleEnum.verifikator:
+                s_total_q = s_total_q.filter(VerificationRecord.assigned_to == current_user.id)
+                s_done_q = s_done_q.filter(VerificationRecord.assigned_to == current_user.id)
+
+            s_total = s_total_q.count()
+            s_done = s_done_q.count()
+            
+            # Jangan tampilkan sesi di chart jika verifikator tidak punya tugas di sesi tersebut
+            if current_user.role == RoleEnum.verifikator and s_total == 0:
+                continue
+
             chart_data.append({
                 "name": f"Sesi {s.id}",
                 "done": s_done,

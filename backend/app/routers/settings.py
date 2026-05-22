@@ -13,6 +13,7 @@ class ReasonCreate(BaseModel):
     label: str
     is_active: bool = True
     sort_order: int = 0
+    requires_stand_correction: bool = False
 
 class ReasonOut(ReasonCreate):
     id: int
@@ -56,6 +57,7 @@ def update_reason(reason_id: int, req: ReasonCreate, db: Session = Depends(get_d
     reason.label = req.label
     reason.is_active = req.is_active
     reason.sort_order = req.sort_order
+    reason.requires_stand_correction = req.requires_stand_correction
     db.commit()
     db.refresh(reason)
     return reason

@@ -19,6 +19,8 @@ def get_records(
     assigned_to: Optional[int] = None,
     search: Optional[str] = None,
     record_type: Optional[str] = None,
+    unit: Optional[str] = None,
+    reason_type: Optional[str] = None,
     anomaly_only: bool = False,
     merek_mismatch: bool = False,
     skip: int = 0,
@@ -38,6 +40,10 @@ def get_records(
         q = q.filter(VerificationRecord.id_pelanggan.contains(search))
     if record_type:
         q = q.filter(VerificationRecord.record_type == record_type)
+    if unit:
+        q = q.filter(VerificationRecord.unit == unit)
+    if reason_type:
+        q = q.filter(VerificationRecord.reason_type == reason_type)
     if anomaly_only:
         q = q.filter(VerificationRecord.is_anomaly == True)
     if merek_mismatch:

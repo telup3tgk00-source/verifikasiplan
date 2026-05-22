@@ -374,3 +374,9 @@ a {
     padding: 0 16px !important;
   }
 }
+
+/* Hide default browser password reveal (Edge/IE) to prevent double eye icons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}

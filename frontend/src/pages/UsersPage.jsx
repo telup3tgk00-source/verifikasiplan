@@ -14,8 +14,10 @@ export default function UsersPage() {
     const [activeTab, setActiveTab] = useState('akun') // 'akun' | 'alasan'
     const [showForm, setShowForm] = useState(false)
     const [form, setForm] = useState({ username: '', password: '', full_name: '', role: 'verifikator', unit_penugasan: '' })
-    const [reasonForm, setReasonForm] = useState({ value: '', label: '', sort_order: 0 })
+    const [showPassword, setShowPassword] = useState(false)
+    const [reasonForm, setReasonForm] = useState({ value: '', label: '', sort_order: 0, requires_stand_correction: false })
     const [showReasonForm, setShowReasonForm] = useState(false)
+    const [editingReasonId, setEditingReasonId] = useState(null)
     const [dialog, setDialog] = useState(null)
 
     const { data: users = [], isLoading } = useQuery({
@@ -63,9 +65,22 @@ export default function UsersPage() {
             toast.success('Alasan berhasil ditambahkan')
             qc.invalidateQueries(['reasons'])
             setShowReasonForm(false)
-            setReasonForm({ value: '', label: '', sort_order: 0 })
+            setEditingReasonId(null)
+            setReasonForm({ value: '', label: '', sort_order: 0, requires_stand_correction: false })
         },
         onError: (err) => toast.error(err.response?.data?.detail || 'Gagal menambah alasan'),
+    })
+
+    const updateReason = useMutation({
+        mutationFn: ({ id, ...data }) => api.put(`/api/settings/reasons/${id}`, data),
+        onSuccess: () => {
+            toast.success('Alasan berhasil diperbarui')
+            qc.invalidateQueries(['reasons'])
+            setShowReasonForm(false)
+            setEditingReasonId(null)
+            setReasonForm({ value: '', label: '', sort_order: 0, requires_stand_correction: false })
+        },
+        onError: (err) => toast.error(err.response?.data?.detail || 'Gagal memperbarui alasan'),
     })
 
     const deleteReason = useMutation({
@@ -121,7 +136,19 @@ export default function UsersPage() {
                     <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Kelola akun dan opsi konfigurasi sistem</p>
                 </div>
                 <button
-                    onClick={() => activeTab === 'akun' ? setShowForm(!showForm) : setShowReasonForm(!showReasonForm)}
+                    onClick={() => {
+                        if (activeTab === 'akun') {
+                            setShowForm(!showForm);
+                        } else {
+                            if (showReasonForm) {
+                                setShowReasonForm(false);
+                                setEditingReasonId(null);
+                                setReasonForm({ value: '', label: '', sort_order: 0, requires_stand_correction: false });
+                            } else {
+                                setShowReasonForm(true);
+                            }
+                        }
+                    }}
                     style={{
                         background: (activeTab === 'akun' ? showForm : showReasonForm) ? '#f1f5f9' : '#0f172a', 
                         color: (activeTab === 'akun' ? showForm : showReasonForm) ? '#374151' : '#fff',
@@ -146,13 +173,30 @@ export default function UsersPage() {
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 16 }}>User Baru</div>
                     <div className="grid-upload">
                         {[['username', 'Username', 'text'], ['password', 'Password', 'password'], ['full_name', 'Nama Lengkap', 'text']].map(([key, label, type]) => (
-                            <div key={key}>
+                            <div key={key} style={{ position: 'relative' }}>
                                 <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>{label}</label>
                                 <input
-                                    type={type} value={form[key]}
+                                    type={key === 'password' ? (showPassword ? "text" : "password") : type} value={form[key]}
                                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                                    style={inputStyle}
+                                    style={key === 'password' ? { ...inputStyle, paddingRight: 32 } : inputStyle}
                                 />
+                                {key === 'password' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        style={{
+                                            position: 'absolute', right: 6, top: 22, height: 24, width: 24,
+                                            background: 'transparent', border: 'none', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b'
+                                        }}
+                                    >
+                                        {showPassword ? (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         ))}
                         <div>
@@ -261,31 +305,56 @@ export default function UsersPage() {
                 <>
                     {showReasonForm && (
                         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 24, marginBottom: 20 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 16 }}>Opsi Alasan Baru</div>
-                            <div className="grid-upload-3">
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 16 }}>
+                                {editingReasonId ? 'Edit Alasan' : 'Opsi Alasan Baru'}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 0.5fr 0.5fr', gap: 14, marginBottom: 16 }}>
                                 <div>
                                     <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Key / Value (unik, tanpa spasi)</label>
-                                    <input placeholder="cth: meter_rusak" type="text" value={reasonForm.value} onChange={e => setReasonForm(f => ({ ...f, value: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))} style={inputStyle} />
+                                    <input placeholder="cth: meter_rusak" type="text" value={reasonForm.value} onChange={e => setReasonForm(f => ({ ...f, value: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))} style={inputStyle} disabled={!!editingReasonId} />
                                 </div>
                                 <div>
                                     <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Label Teks (yang tampil di dropdown)</label>
                                     <input placeholder="cth: Meteran Rusak Total" type="text" value={reasonForm.label} onChange={e => setReasonForm(f => ({ ...f, label: e.target.value }))} style={inputStyle} />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Urutan (Angka)</label>
+                                    <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Urutan</label>
                                     <input type="number" value={reasonForm.sort_order} onChange={e => setReasonForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} style={inputStyle} />
                                 </div>
+                                <div>
+                                    <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Bisa Koreksi?</label>
+                                    <div style={{ height: 36, display: 'flex', alignItems: 'center' }}>
+                                        <input type="checkbox" checked={reasonForm.requires_stand_correction} onChange={e => setReasonForm(f => ({ ...f, requires_stand_correction: e.target.checked }))} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                                        <span style={{ fontSize: 12, marginLeft: 8, color: '#1e293b' }}>Ya</span>
+                                    </div>
+                                </div>
                             </div>
-                            <button
-                                onClick={() => createReason.mutate(reasonForm)}
-                                disabled={createReason.isPending || !reasonForm.value || !reasonForm.label}
-                                style={{
-                                    background: '#0f172a', color: '#fff', border: 'none', borderRadius: 7,
-                                    padding: '9px 20px', cursor: 'pointer', fontWeight: 600, fontSize: 12,
-                                    opacity: (createReason.isPending || !reasonForm.value || !reasonForm.label) ? 0.5 : 1
-                                }}>
-                                {createReason.isPending ? 'Menyimpan...' : 'Simpan Alasan'}
-                            </button>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <button
+                                    onClick={() => editingReasonId ? updateReason.mutate({ id: editingReasonId, ...reasonForm }) : createReason.mutate(reasonForm)}
+                                    disabled={(editingReasonId ? updateReason.isPending : createReason.isPending) || !reasonForm.value || !reasonForm.label}
+                                    style={{
+                                        background: '#0f172a', color: '#fff', border: 'none', borderRadius: 7,
+                                        padding: '9px 20px', cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                                        opacity: ((editingReasonId ? updateReason.isPending : createReason.isPending) || !reasonForm.value || !reasonForm.label) ? 0.5 : 1
+                                    }}>
+                                    {editingReasonId 
+                                        ? (updateReason.isPending ? 'Menyimpan...' : 'Update Alasan') 
+                                        : (createReason.isPending ? 'Menyimpan...' : 'Simpan Alasan')}
+                                </button>
+                                {editingReasonId && (
+                                    <button
+                                        onClick={() => {
+                                            setShowReasonForm(false);
+                                            setEditingReasonId(null);
+                                            setReasonForm({ value: '', label: '', sort_order: 0, requires_stand_correction: false });
+                                        }}
+                                        style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 7, padding: '9px 20px', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}
+                                    >
+                                        Batal Edit
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -297,7 +366,7 @@ export default function UsersPage() {
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                     <thead>
                                         <tr style={{ background: '#f8fafc' }}>
-                                            {['Urutan', 'Key Value', 'Label Teks', 'Status', ''].map(h => (
+                                            {['Urutan', 'Key Value', 'Label Teks', 'Bisa Koreksi', 'Status', ''].map(h => (
                                                 <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                                             ))}
                                         </tr>
@@ -308,12 +377,26 @@ export default function UsersPage() {
                                                 <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a', width: 60, textAlign: 'center' }}>{r.sort_order}</td>
                                                 <td style={{ padding: '12px 16px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{r.value}</td>
                                                 <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a' }}>{r.label}</td>
+                                                <td style={{ padding: '12px 16px', color: '#0f172a', fontSize: 12 }}>{r.requires_stand_correction ? '✅ Ya' : '❌ Tidak'}</td>
                                                 <td style={{ padding: '12px 16px' }}>
                                                     <span style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: r.is_active ? '#f0fdf4' : '#f1f5f9', color: r.is_active ? '#16a34a' : '#64748b', border: `1px solid ${r.is_active ? '#bbf7d0' : '#e2e8f0'}` }}>
                                                         {r.is_active ? 'Aktif' : 'Nonaktif'}
                                                     </span>
                                                 </td>
-                                                <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                                <td style={{ padding: '12px 16px', textAlign: 'right', display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                                    <button onClick={() => {
+                                                        setEditingReasonId(r.id);
+                                                        setReasonForm({
+                                                            value: r.value,
+                                                            label: r.label,
+                                                            sort_order: r.sort_order,
+                                                            requires_stand_correction: r.requires_stand_correction
+                                                        });
+                                                        setShowReasonForm(true);
+                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                    }} style={{ background: 'none', color: '#3b82f6', border: '1px solid #bfdbfe', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
+                                                        Edit
+                                                    </button>
                                                     <button onClick={() => setDialog({
                                                         type: 'confirm', title: 'Hapus Alasan', danger: true,
                                                         message: `Hapus alasan "${r.label}"?`,

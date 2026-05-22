@@ -23,6 +23,7 @@ class ReasonOption(Base):
     label = Column(String(200))
     is_active = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
+    requires_stand_correction = Column(Boolean, default=False)
 
 class User(Base):
     __tablename__ = "users"
