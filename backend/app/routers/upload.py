@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.routers.auth import get_current_user
 from app.models import UploadSession, VerificationRecord, StatusEnum, User, RoleEnum
+from app.permissions import CAN_UPLOAD, apply_scope_filter
 import pandas as pd
 import io
 
@@ -27,7 +28,7 @@ def safe_float(val):
     except (ValueError, TypeError):
         return None
 
-def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int) -> list:
+def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int, kode_unit: str = None) -> list:
     """
     Parse file Excel (MATCH atau BEDA) dari Web 1 dan kembalikan list VerificationRecord.
     Kolom yang dikenali: No, Waktu, ID Pelanggan, Stand AI, Stand Biller,
@@ -48,6 +49,7 @@ def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int) -> li
     col_nama_bil   = find_col(df, ["Nama Biller", "nama_biller", "NAMA BILLER"])
     col_unit       = find_col(df, ["Unit", "unit", "UNIT"])
     col_kode_nama_bil = find_col(df, ["Kode Nama Biller", "kode_nama_biller", "KODE NAMA BILLER"])
+    col_lbkb          = find_col(df, ["LBKB", "lbkb"])
 
     if not col_id:
         raise ValueError("Kolom 'ID Pelanggan' tidak ditemukan di file Excel")
@@ -72,6 +74,7 @@ def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int) -> li
             nama_bil  = str(row[col_nama_bil]).strip() if col_nama_bil and pd.notna(row[col_nama_bil]) else None
             unit      = str(row[col_unit]).strip()     if col_unit     and pd.notna(row[col_unit])     else None
             kode_nama_biller = str(row[col_kode_nama_bil]).strip() if col_kode_nama_bil and pd.notna(row[col_kode_nama_bil]) else None
+            lbkb      = str(row[col_lbkb]).strip()     if col_lbkb     and pd.notna(row[col_lbkb])     else None
 
             rec = VerificationRecord(
                 session_id=session_id,
@@ -85,9 +88,12 @@ def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int) -> li
                 merek_ai=merek,
                 merek_petugas=nama_bil,
                 tipe_ai=tipe,
+                lbkb=lbkb,
                 # Data MATCH langsung VERIFIED_OK; BEDA = PENDING
                 status=StatusEnum.VERIFIED_OK if record_type == "match" else StatusEnum.PENDING,
                 is_anomaly=(selisih or 0) > ANOMALY_THRESHOLD,
+                # Gunakan unit dari excel (misal: 17100) agar ULP bisa melihat. Fallback ke kode_unit uploader.
+                kode_unit=unit if unit else kode_unit
             )
             records.append(rec)
         except Exception:
@@ -96,11 +102,11 @@ def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int) -> li
     return records
 
 
-def process_upload(session_id: int, match_bytes: bytes, beda_bytes: bytes, db: Session):
+def process_upload(session_id: int, match_bytes: bytes, beda_bytes: bytes, db: Session, kode_unit: str = None):
     """Background task: parse kedua file dan simpan ke DB."""
     try:
-        match_records = parse_excel_file(match_bytes, "match", session_id)
-        beda_records  = parse_excel_file(beda_bytes,  "beda",  session_id)
+        match_records = parse_excel_file(match_bytes, "match", session_id, kode_unit)
+        beda_records  = parse_excel_file(beda_bytes,  "beda",  session_id, kode_unit)
 
         db.bulk_save_objects(match_records + beda_records)
 
@@ -129,6 +135,9 @@ async def upload_files(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    if current_user.role not in CAN_UPLOAD:
+        raise HTTPException(status_code=403, detail="Hanya UP3 ke atas yang dapat upload file")
+
     for f in [file_match, file_beda]:
         if not f.filename.lower().endswith((".xlsx", ".xls")):
             raise HTTPException(status_code=400, detail=f"File '{f.filename}' harus format .xlsx / .xls")
@@ -142,13 +151,14 @@ async def upload_files(
         bulan_verifikasi=bulan_verifikasi,
         file_match_name=file_match.filename,
         file_beda_name=file_beda.filename,
-        status="processing"
+        status="processing",
+        kode_unit=current_user.kode_unit
     )
     db.add(session)
     db.commit()
     db.refresh(session)
 
-    background_tasks.add_task(process_upload, session.id, match_bytes, beda_bytes, db)
+    background_tasks.add_task(process_upload, session.id, match_bytes, beda_bytes, db, current_user.kode_unit)
     return {
         "session_id": session.id,
         "status": "processing",
@@ -158,11 +168,26 @@ async def upload_files(
 
 @router.get("/sessions")
 def get_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    q = db.query(UploadSession).order_by(UploadSession.created_at.desc())
-    if current_user.role == RoleEnum.verifikator:
+    from sqlalchemy import or_
+    q = db.query(UploadSession)
+    
+    if current_user.role == RoleEnum.super_admin:
+        pass
+    elif current_user.role == RoleEnum.verifikator:
         # Hanya tampilkan sesi yang memiliki minimal 1 record dengan assigned_to == current_user.id
         q = q.join(VerificationRecord, VerificationRecord.session_id == UploadSession.id)\
              .filter(VerificationRecord.assigned_to == current_user.id).distinct()
+    else:
+        if current_user.kode_unit:
+            prefixes = [current_user.kode_unit[:i] for i in range(1, len(current_user.kode_unit)+1)]
+            q = q.filter(
+                or_(
+                    UploadSession.kode_unit.like(f"{current_user.kode_unit}%"),
+                    UploadSession.kode_unit.in_(prefixes)
+                )
+            )
+            
+    q = q.order_by(UploadSession.created_at.desc())
     sessions = q.all()
     result = []
     for s in sessions:
@@ -170,7 +195,7 @@ def get_sessions(db: Session = Depends(get_db), current_user: User = Depends(get
         total_match = s.total_match
         total_beda = s.total_beda
         
-        # Jika verifikator, hitung ulang total tugas berdasarkan yang di-assign padanya
+        # Jika verifikator atau ULP (yang kode_unitnya lebih spesifik dari sesi), hitung ulang
         if current_user.role == RoleEnum.verifikator:
             total_records = db.query(VerificationRecord).filter(
                 VerificationRecord.session_id == s.id,
@@ -180,6 +205,19 @@ def get_sessions(db: Session = Depends(get_db), current_user: User = Depends(get
             total_match = db.query(VerificationRecord).filter(
                 VerificationRecord.session_id == s.id,
                 VerificationRecord.assigned_to == current_user.id,
+                VerificationRecord.record_type == 'match',
+                VerificationRecord.is_deleted == False
+            ).count()
+            total_beda = total_records - total_match
+        elif current_user.kode_unit and s.kode_unit and len(current_user.kode_unit) > len(s.kode_unit):
+            total_records = db.query(VerificationRecord).filter(
+                VerificationRecord.session_id == s.id,
+                VerificationRecord.kode_unit.like(f"{current_user.kode_unit}%"),
+                VerificationRecord.is_deleted == False
+            ).count()
+            total_match = db.query(VerificationRecord).filter(
+                VerificationRecord.session_id == s.id,
+                VerificationRecord.kode_unit.like(f"{current_user.kode_unit}%"),
                 VerificationRecord.record_type == 'match',
                 VerificationRecord.is_deleted == False
             ).count()
@@ -201,8 +239,10 @@ def get_sessions(db: Session = Depends(get_db), current_user: User = Depends(get
 
 
 @router.get("/sessions/{session_id}")
-def get_session(session_id: int, db: Session = Depends(get_db)):
-    s = db.query(UploadSession).filter_by(id=session_id).first()
+def get_session(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    q = db.query(UploadSession).filter_by(id=session_id)
+    q = apply_scope_filter(q, UploadSession, current_user)
+    s = q.first()
     if not s:
         raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
     return {
@@ -221,26 +261,52 @@ def get_session(session_id: int, db: Session = Depends(get_db)):
 
 def background_delete_session(session_id: int):
     from app.database import SessionLocal
-    from app.models import AssignmentBatch
+    from app.models import AssignmentBatch, UploadSession
+    from sqlalchemy import text
+    
     db = SessionLocal()
     try:
-        # Delete related assignment batches first to maintain integrity if applicable
+        # 1. Hapus assignment batches
         db.query(AssignmentBatch).filter_by(session_id=session_id).delete(synchronize_session=False)
-        # Physically delete the verification records to free up space
-        db.query(VerificationRecord).filter_by(session_id=session_id).delete(synchronize_session=False)
-        # Finally delete the session
+        db.commit()
+
+        # 2. Hapus audit_logs yang terkait dengan record di sesi ini (Fix Foreign Key Violation)
+        db.execute(
+            text("DELETE FROM audit_logs WHERE record_id IN (SELECT id FROM verification_records WHERE session_id = :sid)"),
+            {"sid": session_id}
+        )
+        db.commit()
+
+        # 3. Hapus records secara bertahap (chunking via SQL) agar cepat dan tidak kena limit parameter Postgres
+        while True:
+            res = db.execute(
+                text("DELETE FROM verification_records WHERE id IN (SELECT id FROM verification_records WHERE session_id = :sid LIMIT 10000)"),
+                {"sid": session_id}
+            )
+            db.commit()
+            if res.rowcount == 0:
+                break
+
+        # 4. Terakhir hapus sesi
         session = db.query(UploadSession).filter_by(id=session_id).first()
         if session:
             db.delete(session)
         db.commit()
     except Exception as e:
         db.rollback()
+        import traceback
+        traceback.print_exc()
     finally:
         db.close()
 
 @router.delete("/sessions/{session_id}")
 def delete_session(session_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    session = db.query(UploadSession).filter_by(id=session_id).first()
+    if current_user.role not in CAN_UPLOAD:
+        raise HTTPException(status_code=403, detail="Hanya role pengunggah yang dapat menghapus sesi")
+        
+    q = db.query(UploadSession).filter_by(id=session_id)
+    q = apply_scope_filter(q, UploadSession, current_user)
+    session = q.first()
     if not session:
         raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
     

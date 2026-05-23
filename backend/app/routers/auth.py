@@ -48,18 +48,27 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     if not user or not pwd_context.verify(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Username atau password salah")
     token = create_token({"sub": str(user.id), "role": user.role.value})
-    return TokenResponse(access_token=token, role=user.role.value, full_name=user.full_name)
+    return TokenResponse(
+        access_token=token,
+        role=user.role.value,
+        full_name=user.full_name,
+        kode_unit=user.kode_unit
+    )
 
 @router.post("/init-admin")
 def init_admin(db: Session = Depends(get_db)):
     existing = db.query(User).filter_by(username="admin").first()
     if existing:
-        return {"message": "Admin sudah ada"}
+        # Upgrade role ke super_admin jika masih role lama
+        if existing.role.value not in ["super_admin", "uid", "up3", "ulp", "verifikator"]:
+            existing.role = RoleEnum.super_admin
+            db.commit()
+        return {"message": "Admin sudah ada", "role": existing.role.value}
     admin = User(
         username="admin",
         password_hash=pwd_context.hash("admin123"),
         full_name="Administrator PLN",
-        role=RoleEnum.admin
+        role=RoleEnum.super_admin
     )
     db.add(admin)
     db.commit()

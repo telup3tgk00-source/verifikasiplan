@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../api/axios'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { useAuthStore } from '../store/authStore'
+import DashboardUID from './DashboardUID'
 
 function StatCard({ label, value, color, subtext }) {
     return (
@@ -17,6 +19,12 @@ function StatCard({ label, value, color, subtext }) {
 }
 
 export default function Dashboard() {
+    const { role } = useAuthStore()
+
+    if (role === 'uid') {
+        return <DashboardUID />
+    }
+
     useEffect(() => { document.title = "Dashboard | METRIK" }, [])
 
     const [selectedBulan, setSelectedBulan] = useState('')
@@ -128,10 +136,9 @@ export default function Dashboard() {
                     <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 24 }}>Proporsi hasil verifikasi</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                         {[
-                            { label: 'Setuju', value: stats?.verified_ok, color: '#10b981' },
-                            { label: 'Tidak Setuju', value: stats?.verified_reject, color: '#ef4444' },
+                            { label: 'Setuju / OK', value: stats?.verified_ok, color: '#10b981' },
                             { label: 'Investigasi', value: stats?.need_investigation, color: '#f59e0b' },
-                            { label: 'Pending', value: stats?.pending, color: '#94a3b8' },
+                            { label: 'Belum Dikerjakan', value: stats?.pending, color: '#94a3b8' },
                         ].map(item => {
                             const pct = stats?.total ? ((item.value || 0) / stats.total * 100) : 0
                             return (
@@ -171,9 +178,11 @@ export default function Dashboard() {
                                 {sessions
                                     .filter(s => !selectedBulan || s.bulan_verifikasi === selectedBulan)
                                     .slice(0, 5)
-                                    .map(s => (
-                                    <tr key={s.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                        <td style={{ padding: '12px 20px', fontWeight: 600, color: '#0f172a' }}>#{s.id}</td>
+                                    .map(s => {
+                                        const localIndex = sessions.length - sessions.indexOf(s);
+                                        return (
+                                        <tr key={s.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                            <td style={{ padding: '12px 20px', fontWeight: 600, color: '#0f172a' }}>#{localIndex}</td>
                                         <td style={{ padding: '12px 20px', color: '#0f172a', fontWeight: 500 }}>{s.batch_name || '—'}</td>
                                         <td style={{ padding: '12px 20px', color: '#64748b' }}>{new Date(s.created_at).toLocaleString('id-ID')}</td>
                                         <td style={{ padding: '12px 20px', color: '#374151' }}>{s.total_records?.toLocaleString() || '—'}</td>
@@ -187,9 +196,10 @@ export default function Dashboard() {
                                                 {s.status === 'done' ? 'Selesai' : s.status === 'processing' ? 'Diproses' : s.status}
                                             </span>
                                         </td>
-                                    </tr>
-                                ))}
-                            </tbody>
+                                        </tr>
+                                        );
+                                    })}
+                                </tbody>
                         </table>
                     </div>
                 )}

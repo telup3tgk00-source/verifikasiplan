@@ -13,6 +13,7 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     role: str
     full_name: str
+    kode_unit: Optional[str] = None
 
 # ── USER ──────────────────────────────────────────
 class UserCreate(BaseModel):
@@ -20,6 +21,7 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
     role: RoleEnum = RoleEnum.verifikator
+    kode_unit: Optional[str] = None
     unit_penugasan: Optional[str] = None
 
 class UserOut(BaseModel):
@@ -27,7 +29,9 @@ class UserOut(BaseModel):
     username: str
     full_name: str
     role: RoleEnum
-    unit_penugasan: Optional[str]
+    kode_unit: Optional[str] = None
+    unit_penugasan: Optional[str] = None
+    parent_id: Optional[int] = None
     is_active: bool
     created_at: datetime
 
@@ -56,6 +60,8 @@ class RecordOut(BaseModel):
     corrected_stand: Optional[float]
     verified_at: Optional[datetime]
     is_anomaly: bool
+    kode_unit: Optional[str] = None
+    lbkb: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -63,13 +69,13 @@ class RecordOut(BaseModel):
 class RecordUpdate(BaseModel):
     status: StatusEnum
     catatan: Optional[str] = None
-    reason_type: Optional[str] = None    # alasan kenapa beda
-    corrected_stand: Optional[float] = None  # koreksi stand jika AI salah baca
+    reason_type: Optional[str] = None
+    corrected_stand: Optional[float] = None
 
 # ── ASSIGNMENT ────────────────────────────────────
 class AssignmentRequest(BaseModel):
     session_id: int
-    method: str = "auto"   # hanya "auto" yang dipakai sekarang
+    method: str = "auto"
     operator_ids: list[int]
     range_start: Optional[str] = None
     range_end: Optional[str] = None

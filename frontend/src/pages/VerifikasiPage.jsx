@@ -317,6 +317,7 @@ export default function VerifikasiPage() {
     const [activeFoto, setActiveFoto] = useState(null)   // { idpel, blth, fotoke, loading, url, error }
     const [expandedFoto, setExpandedFoto] = useState(null) // idpel yang sedang di-expand
     const [pendingAutoOpen, setPendingAutoOpen] = useState(false) // auto-buka record pertama setelah ganti page
+    const [isOverrideMode, setIsOverrideMode] = useState(false)
 
     const blthList = getBlthList()
 
@@ -328,9 +329,9 @@ export default function VerifikasiPage() {
     // 1. Prioritas: bulan_verifikasi dari record yang sedang dibuka (jika ada)
     // 2. Fallback: bulan_verifikasi dari filter sesi, atau bulan kalender
     const selectedSession = sessions.find(s => String(s.id) === String(filter.sessionId))
-    const activeBulan = (selected ? sessions.find(s => s.id === selected.session_id)?.bulan_verifikasi : null) 
-                        || selectedSession?.bulan_verifikasi 
-                        || blthList[0]
+    const activeBulan = (selected ? sessions.find(s => s.id === selected.session_id)?.bulan_verifikasi : null)
+        || selectedSession?.bulan_verifikasi
+        || blthList[0]
 
     const handleFotoClick = async (idpel, blth, fotoke) => {
         setActiveFoto({ idpel, blth, fotoke, loading: true, url: null, error: null })
@@ -398,7 +399,7 @@ export default function VerifikasiPage() {
             toast.success('Data berhasil disimpan')
             qc.invalidateQueries(['records'])
             qc.invalidateQueries(['dashboard-stats'])
-            
+
             const currentIndex = records.findIndex(r => r.id === variables.id)
             if (currentIndex !== -1 && currentIndex < records.length - 1) {
                 // Ada record berikutnya di page ini, otomatis buka
@@ -428,6 +429,7 @@ export default function VerifikasiPage() {
         setNote(r.catatan || '')
         setReasonType(r.reason_type || '')
         setCorrectedStand(r.corrected_stand ?? '')
+        setIsOverrideMode(false)
     }
 
     const navigateModal = (direction) => {
@@ -583,99 +585,135 @@ export default function VerifikasiPage() {
                                 <button onClick={() => setSelected(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: 6, width: 28, height: 28, cursor: 'pointer', fontSize: 14, color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
                             </div>
 
-                            {/* Side-by-side data */}
-                            <div className="grid-upload" style={{ marginBottom: 16 }}>
-                                {[
-                                    { title: 'Hasil AI', bg: '#f8fafc', border: '#e2e8f0', stand: selected.stand_ai, merek: selected.merek_ai, tipe: selected.tipe_ai },
-                                    { title: 'Stand Biller', bg: '#fffbeb', border: '#fde68a', stand: selected.stand_petugas, merek: selected.merek_petugas, tipe: selected.tipe_petugas },
-                                ].map(col => (
-                                    <div key={col.title} style={{ background: col.bg, border: `1px solid ${col.border}`, borderRadius: 8, padding: 14 }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>{col.title}</div>
-                                        {[['Stand KWH', col.stand], ['Merek', col.merek], ['Tipe', col.tipe]].map(([k, v]) => (
-                                            <div key={k} style={{ marginBottom: 8 }}>
-                                                <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>{k}</div>
-                                                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-                                                    {k === 'Stand KWH' && col.title === 'Hasil AI' && allowKoreksi && correctedStand !== '' ? (
-                                                        <span>
-                                                            <span style={{ color: '#16a34a' }}>{correctedStand}</span>
-                                                            <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: 11, marginLeft: 6 }}>{v ?? '—'}</span>
-                                                        </span>
-                                                    ) : (
-                                                        v ?? '—'
-                                                    )}
+                            {/* Mode QA / Read-Only Check */}
+                            {(() => {
+                                const isAlreadyVerified = selected?.status !== 'PENDING';
+                                const isSupervisor = role !== 'verifikator';
+                                const isReadOnly = isAlreadyVerified && !isOverrideMode;
+
+                                return (
+                                    <>
+                                        {/* Side-by-side data */}
+                                        <div className="grid-upload" style={{ marginBottom: 16 }}>
+                                            {[
+                                                { title: 'Hasil AI', bg: '#f8fafc', border: '#e2e8f0', stand: selected.stand_ai, merek: selected.merek_ai, tipe: selected.tipe_ai },
+                                                { title: 'Stand Biller', bg: '#fffbeb', border: '#fde68a', stand: selected.stand_petugas, merek: selected.merek_petugas, tipe: selected.tipe_petugas },
+                                            ].map(col => (
+                                                <div key={col.title} style={{ background: col.bg, border: `1px solid ${col.border}`, borderRadius: 8, padding: 14 }}>
+                                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>{col.title}</div>
+                                                    {[['Stand KWH', col.stand], ['Merek', col.merek], ['Tipe', col.tipe]].map(([k, v]) => (
+                                                        <div key={k} style={{ marginBottom: 8 }}>
+                                                            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>{k}</div>
+                                                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                                                                {k === 'Stand KWH' && col.title === 'Hasil AI' && allowKoreksi && correctedStand !== '' ? (
+                                                                    <span>
+                                                                        <span style={{ color: '#16a34a' }}>{correctedStand}</span>
+                                                                        <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: 11, marginLeft: 6 }}>{v ?? '—'}</span>
+                                                                    </span>
+                                                                ) : (
+                                                                    v ?? '—'
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {selected.lbkb && selected.lbkb !== 'NORMAL' && (
+                                            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+                                                <div style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 4 }}>Informasi LBKB</div>
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: '#991b1b' }}>{selected.lbkb}</div>
+                                            </div>
+                                        )}
+
+                                        {/* Selisih */}
+                                        <div style={{ background: selisihBg, border: `1px solid ${selisihBorder}`, borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s' }}>
+                                            <div>
+                                                <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selisih Stand</div>
+                                                <div style={{ fontSize: 20, fontWeight: 700, color: selisihColor, transition: 'color 0.2s' }}>
+                                                    {currentSelisih} KWH
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
+                                            {selected.is_anomaly && (
+                                                <span style={{ padding: '4px 10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 5, fontSize: 11, fontWeight: 600 }}>
+                                                    ⚠ Anomali Tinggi
+                                                </span>
+                                            )}
+                                        </div>
 
-                            {/* Selisih */}
-                            <div style={{ background: selisihBg, border: `1px solid ${selisihBorder}`, borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s' }}>
-                                <div>
-                                    <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selisih Stand</div>
-                                    <div style={{ fontSize: 20, fontWeight: 700, color: selisihColor, transition: 'color 0.2s' }}>
-                                        {currentSelisih} KWH
-                                    </div>
-                                </div>
-                                {selected.is_anomaly && (
-                                    <span style={{ padding: '4px 10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 5, fontSize: 11, fontWeight: 600 }}>
-                                        ⚠ Anomali Tinggi
-                                    </span>
-                                )}
-                            </div>
+                                        {/* Alasan */}
+                                        <div style={{ marginBottom: 14 }}>
+                                            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
+                                                Alasan Perbedaan <span style={{ color: '#ef4444' }}>*</span>
+                                            </label>
+                                            <select
+                                                value={reasonType}
+                                                onChange={e => setReasonType(e.target.value)}
+                                                disabled={isReadOnly}
+                                                style={{ ...inputStyle, width: '100%', height: 36, paddingLeft: 11, boxSizing: 'border-box', background: isReadOnly ? '#f8fafc' : '#fff', opacity: isReadOnly ? 0.7 : 1 }}
+                                            >
+                                                <option value="">— Pilih Alasan —</option>
+                                                {reasons.filter(r => r.is_active || r.value === reasonType).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                            </select>
+                                        </div>
 
-                            {/* Alasan */}
-                            <div style={{ marginBottom: 14 }}>
-                                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
-                                    Alasan Perbedaan <span style={{ color: '#ef4444' }}>*</span>
-                                </label>
-                                <select
-                                    value={reasonType}
-                                    onChange={e => setReasonType(e.target.value)}
-                                    style={{ ...inputStyle, width: '100%', height: 36, paddingLeft: 11, boxSizing: 'border-box' }}
-                                >
-                                    <option value="">— Pilih Alasan —</option>
-                                    {reasons.filter(r => r.is_active || r.value === reasonType).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                </select>
-                            </div>
+                                        {/* Stand koreksi (muncul jika alasan mengizinkan) */}
+                                        {allowKoreksi && (
+                                            <div style={{ marginBottom: 14 }}>
+                                                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
+                                                    Stand Koreksi (KWH)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={correctedStand}
+                                                    onChange={e => setCorrectedStand(e.target.value)}
+                                                    disabled={isReadOnly}
+                                                    placeholder="Masukkan stand yang benar..."
+                                                    style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', background: isReadOnly ? '#f8fafc' : '#fff', opacity: isReadOnly ? 0.7 : 1 }}
+                                                />
+                                            </div>
+                                        )}
 
-                            {/* Stand koreksi (muncul jika alasan mengizinkan) */}
-                            {allowKoreksi && (
-                                <div style={{ marginBottom: 14 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
-                                        Stand Koreksi (KWH)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={correctedStand}
-                                        onChange={e => setCorrectedStand(e.target.value)}
-                                        placeholder="Masukkan stand yang benar..."
-                                        style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
-                                    />
-                                </div>
-                            )}
+                                        {/* Catatan */}
+                                        <div style={{ marginBottom: 20 }}>
+                                            <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>
+                                                Catatan <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opsional)</span>
+                                            </label>
+                                            <textarea
+                                                value={note} onChange={e => setNote(e.target.value)}
+                                                disabled={isReadOnly}
+                                                rows={2}
+                                                placeholder="Catatan tambahan..."
+                                                style={{ width: '100%', padding: 10, border: '1px solid #d1d5db', borderRadius: 7, fontSize: 12, outline: 'none', resize: 'none', boxSizing: 'border-box', color: '#1e293b', background: isReadOnly ? '#f8fafc' : '#fff', opacity: isReadOnly ? 0.7 : 1 }}
+                                            />
+                                        </div>
 
-                            {/* Catatan */}
-                            <div style={{ marginBottom: 20 }}>
-                                <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>
-                                    Catatan <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opsional)</span>
-                                </label>
-                                <textarea
-                                    value={note} onChange={e => setNote(e.target.value)}
-                                    rows={2}
-                                    placeholder="Catatan tambahan..."
-                                    style={{ width: '100%', padding: 10, border: '1px solid #d1d5db', borderRadius: 7, fontSize: 12, outline: 'none', resize: 'none', boxSizing: 'border-box', color: '#1e293b' }}
-                                />
-                            </div>
-
-                            {/* Action buttons */}
-                            <div className="grid-upload" style={{ marginTop: 'auto', marginBottom: 0 }}>
-                                <button onClick={() => handleVerify('VERIFIED_OK')} disabled={verifyMutation.isPending}
-                                    style={{ ...btnBase, background: '#16a34a', color: '#fff' }}>✓ Selesai / OK</button>
-                                <button onClick={() => handleVerify('NEED_INVESTIGATION')} disabled={verifyMutation.isPending}
-                                    style={{ ...btnBase, background: '#d97706', color: '#fff' }}>⚑ Perlu Investigasi</button>
-                            </div>
+                                        {/* Action buttons */}
+                                        {isReadOnly ? (
+                                            <div style={{ marginTop: 'auto', marginBottom: 0, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                                                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
+                                                    Data ini telah selesai diverifikasi.
+                                                </div>
+                                                {isSupervisor ? (
+                                                    <button onClick={() => setIsOverrideMode(true)} style={{ ...btnBase, background: '#dc2626', color: '#fff' }}>
+                                                        Anulir / Revisi Keputusan
+                                                    </button>
+                                                ) : (
+                                                    <div style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}> Data Terkunci</div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="grid-upload" style={{ marginTop: 'auto', marginBottom: 0 }}>
+                                                <button onClick={() => handleVerify('VERIFIED_OK')} disabled={verifyMutation.isPending}
+                                                    style={{ ...btnBase, background: '#16a34a', color: '#fff' }}>{isOverrideMode ? 'Simpan Revisi' : '✓ Selesai / OK'}</button>
+                                                <button onClick={() => handleVerify('NEED_INVESTIGATION')} disabled={verifyMutation.isPending}
+                                                    style={{ ...btnBase, background: '#d97706', color: '#fff' }}>{isOverrideMode ? 'Ubah ke Investigasi' : '⚑ Perlu Investigasi'}</button>
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -690,7 +728,7 @@ export default function VerifikasiPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                                 <tr style={{ background: '#f8fafc' }}>
-                                    {['Unit', 'ID Pelanggan', 'Kode Biller', 'Stand AI', 'Stand Biller', 'Selisih', 'Merek AI / Biller', 'Alasan', 'Status', 'Foto', ''].map(h => (
+                                    {['Unit', 'ID Pelanggan', 'Kode Biller', 'Stand AI', 'Stand Biller', 'Selisih', 'Merek AI / Biller', 'LBKB', 'Alasan', 'Status', 'Foto', ''].map(h => (
                                         <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -714,6 +752,7 @@ export default function VerifikasiPage() {
                                             {r.corrected_stand != null && r.stand_petugas != null ? Number(r.corrected_stand) - Number(r.stand_petugas) : (r.selisih ?? '—')}
                                         </td>
                                         <td style={{ padding: '10px 16px', color: '#64748b' }}>{r.merek_ai || '—'} / {r.merek_petugas || '—'}</td>
+                                        <td style={{ padding: '10px 16px', color: (r.lbkb && r.lbkb !== 'NORMAL') ? '#dc2626' : '#64748b', fontWeight: (r.lbkb && r.lbkb !== 'NORMAL') ? 600 : 400, fontSize: 11 }}>{r.lbkb || '—'}</td>
                                         <td style={{ padding: '10px 16px', color: '#64748b', fontSize: 11 }}>
                                             {r.reason_type
                                                 ? reasons.find(o => o.value === r.reason_type)?.label || r.reason_type

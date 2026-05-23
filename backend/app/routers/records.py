@@ -7,6 +7,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.routers.auth import get_current_user
+from app.permissions import apply_scope_filter
 
 router = APIRouter()
 
@@ -27,6 +28,8 @@ def get_records(
     limit: int = 50
 ):
     q = db.query(VerificationRecord).filter_by(is_deleted=False)
+    q = apply_scope_filter(q, VerificationRecord, current_user)
+    
     if session_id:
         q = q.filter(VerificationRecord.session_id == session_id)
     if status:
@@ -80,7 +83,8 @@ def update_record(record_id: int, req: RecordUpdate, db: Session = Depends(get_d
     # Trigger Notifikasi ke Admin/Supervisor jika ada penolakan atau investigasi
     if req.status in [StatusEnum.VERIFIED_REJECT, StatusEnum.NEED_INVESTIGATION]:
         from app.models import User, RoleEnum, Notification
-        supervisors = db.query(User).filter(User.role.in_([RoleEnum.admin, RoleEnum.supervisor])).all()
+        from app.permissions import ADMIN_ROLES
+        supervisors = db.query(User).filter(User.role.in_([RoleEnum.super_admin, RoleEnum.uid, RoleEnum.up3, RoleEnum.ulp])).all()
         for sup in supervisors:
             db.add(Notification(
                 user_id=sup.id,
@@ -94,6 +98,8 @@ def update_record(record_id: int, req: RecordUpdate, db: Session = Depends(get_d
 @router.get("/stats/summary")
 def get_summary(session_id: Optional[int] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     q = db.query(VerificationRecord).filter_by(is_deleted=False)
+    q = apply_scope_filter(q, VerificationRecord, current_user)
+    
     if session_id:
         q = q.filter(VerificationRecord.session_id == session_id)
     total = q.count()

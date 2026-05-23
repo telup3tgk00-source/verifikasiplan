@@ -1,23 +1,36 @@
 import { useState } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAuthStore, canAccess } from '../store/authStore'
 import NotificationBell from './NotificationBell'
 import logoImg from '../assets/logo.png'
 
+// Semua menu yang ada — visibilitas dikontrol oleh canAccess(role, menu)
 const navItems = [
-    { to: '/', label: 'Dashboard', exact: true },
-    { to: '/upload', label: 'Upload Match & Beda' },
-    { to: '/verifikasi', label: 'Verifikasi Data' },
-    { to: '/assignment', label: 'Pembagian Tugas', roles: ['admin', 'supervisor'] },
-    { to: '/progress', label: 'Progres Operator', roles: ['admin', 'supervisor'] },
-    { to: '/export', label: 'Export Excel', roles: ['admin', 'supervisor'] },
-    { to: '/users', label: 'Pengaturan', roles: ['admin'] },
+    { to: '/',           label: 'Dashboard',        exact: true, menu: 'dashboard' },
+    { to: '/upload',     label: 'Upload Match & Beda',            menu: 'upload' },
+    { to: '/verifikasi', label: 'Verifikasi Data',                menu: 'verifikasi' },
+    { to: '/assignment', label: 'Pembagian Tugas',                menu: 'pembagian' },
+    { to: '/progress',   label: 'Progres Operator',              menu: 'progres' },
+    { to: '/export',     label: 'Export Excel',                   menu: 'export' },
+    { to: '/users',      label: 'Pengaturan',                     menu: 'settings' },
 ]
 
+// Label role yang ditampilkan di sidebar
+const ROLE_LABEL = {
+    super_admin: 'Super Admin',
+    uid:         'UID',
+    up3:         'UP3',
+    ulp:         'ULP',
+    verifikator: 'Verifikator',
+}
+
 export default function Layout() {
-    const { fullName, role, logout } = useAuthStore()
+    const { user, role, kode_unit, logout } = useAuthStore()
+    const fullName = user?.full_name
     const navigate = useNavigate()
     const location = useLocation()
+    const queryClient = useQueryClient()
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [dialog, setDialog] = useState(null)
 
@@ -26,6 +39,7 @@ export default function Layout() {
             title: 'Keluar',
             message: 'Apakah Anda yakin ingin keluar dari aplikasi?',
             onConfirm: () => {
+                queryClient.clear() // Bersihkan semua cache React Query agar data user lama hilang
                 logout()
                 navigate('/login')
             }
@@ -64,12 +78,13 @@ export default function Layout() {
                         <img src={logoImg} alt="Logo" style={{ height: 80, width: 'auto', objectFit: 'contain', display: 'block', marginBottom: 8 }} />
                         <div style={{ fontSize: 18, fontWeight: 'bold', color: '#ffffff', letterSpacing: '1px', marginBottom: 4 }}>METRIK</div>
                         <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', textTransform: 'uppercase', textAlign: 'center', fontWeight: 500 }}>Sistem Verifikasi Meter KWH</div>
+                        <div style={{ fontSize: 9, color: 'rgba(96,165,250,0.8)', letterSpacing: '1px', marginTop: 8, fontWeight: 700, padding: '2px 6px', background: 'rgba(59,130,246,0.1)', borderRadius: 4, border: '1px solid rgba(59,130,246,0.2)' }}>v1.1.0</div>
                     </div>
                 </div>
 
                 <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
                     {navItems.map(item => {
-                        if (item.roles && !item.roles.includes(role)) return null
+                        if (!canAccess(role, item.menu)) return null
                         return (
                             <NavLink
                                 key={item.to} to={item.to}
@@ -90,7 +105,7 @@ export default function Layout() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12, color: '#fff', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fullName}</div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', textTransform: 'capitalize' }}>{role}</div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{ROLE_LABEL[role] || role}{kode_unit ? ` · ${kode_unit}` : ''}</div>
                     </div>
                     <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 11, fontWeight: 500, transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#ef4444'} onMouseOut={e => e.target.style.color = 'rgba(255,255,255,0.4)'} title="Logout">Keluar</button>
                 </div>
@@ -111,8 +126,9 @@ export default function Layout() {
                     <div style={{ padding: 28, flex: 1 }}>
                         <Outlet />
                     </div>
-                    <footer style={{ padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 12, textAlign: 'center', flexShrink: 0 }}>
-                        &copy; {new Date().getFullYear()} METRIK PT PLN (Persero) UP3 Tanjung Karang &mdash; Sistem Verifikasi KWH Meter. All rights reserved.
+                    <footer style={{ padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 12, textAlign: 'center', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>&copy; {new Date().getFullYear()} METRIK PT PLN (Persero) UP3 Tanjung Karang &mdash; Sistem Verifikasi KWH Meter. All rights reserved.</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>Versi 1.1.0</span>
                     </footer>
                 </div>
             </div>

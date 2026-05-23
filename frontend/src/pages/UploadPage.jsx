@@ -68,7 +68,7 @@ export default function UploadPage() {
         onError: () => toast.error('Gagal hapus sesi'),
     })
 
-    if (role !== 'admin') return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Akses ditolak.</div>
+    if (!['super_admin', 'up3'].includes(role)) return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Akses ditolak.</div>
 
     const canUpload = fileMatch && fileBeda && !upload.isPending
 
@@ -214,9 +214,9 @@ export default function UploadPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sessions.map(s => (
+                                {sessions.map((s, index) => (
                                     <tr key={s.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                        <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0f172a' }}>#{s.id}</td>
+                                        <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0f172a' }}>#{sessions.length - index}</td>
                                         <td style={{ padding: '10px 16px', color: '#0f172a', fontWeight: 500 }}>{s.batch_name || '—'}</td>
                                         <td style={{ padding: '10px 16px' }}>
                                             {s.bulan_verifikasi ? (

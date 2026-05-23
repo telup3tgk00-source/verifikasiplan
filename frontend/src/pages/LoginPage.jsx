@@ -22,7 +22,7 @@ export default function LoginPage() {
         setLoading(true)
         try {
             const res = await api.post('/api/auth/login', { username, password })
-            setAuth(res.data.access_token, res.data.role, res.data.full_name)
+            setAuth(res.data.access_token, res.data.role, res.data.full_name, res.data.kode_unit)
             toast.success(`Selamat datang, ${res.data.full_name}!`)
             navigate('/')
         } catch {

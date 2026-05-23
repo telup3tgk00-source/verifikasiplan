@@ -1,23 +1,44 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import VerificationRecord, AssignmentBatch, StatusEnum
+from app.models import VerificationRecord, AssignmentBatch, StatusEnum, User, RoleEnum
 from app.schemas import AssignmentRequest
+from app.routers.auth import get_current_user
+from app.permissions import CAN_ASSIGN, apply_scope_filter
 
 router = APIRouter()
 
 @router.post("/")
-def assign_tasks(req: AssignmentRequest, db: Session = Depends(get_db)):
-    # 0. Hapus AssignmentBatch lama untuk sesi ini agar tidak menumpuk
-    db.query(AssignmentBatch).filter_by(session_id=req.session_id).delete(synchronize_session=False)
+def assign_tasks(req: AssignmentRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role not in CAN_ASSIGN:
+        raise HTTPException(status_code=403, detail="Hanya ULP dan Super Admin yang dapat membagi tugas")
+
+    # 0. Hapus AssignmentBatch lama untuk sesi dan scope ini agar tidak menumpuk
+    from app.models import User
+    from sqlalchemy import or_
+    ulp_operators = db.query(User.id).filter(
+        or_(
+            User.kode_unit.like(f"{current_user.kode_unit}%") if current_user.kode_unit else False,
+            User.parent_id == current_user.id
+        )
+    ).all()
+    op_ids = [u.id for u in ulp_operators]
+    
+    if op_ids:
+        db.query(AssignmentBatch).filter(
+            AssignmentBatch.session_id == req.session_id,
+            AssignmentBatch.operator_id.in_(op_ids)
+        ).delete(synchronize_session=False)
     db.commit()
 
-    # 1. Reset semua assigned_to ke None agar bisa di-reassign bersih
-    db.query(VerificationRecord).filter_by(
+    # 1. Reset semua assigned_to ke None agar bisa di-reassign bersih (Hanya scope user)
+    reset_q = db.query(VerificationRecord).filter_by(
         session_id=req.session_id,
         is_deleted=False,
         record_type="beda"
-    ).update({"assigned_to": None}, synchronize_session=False)
+    )
+    reset_q = apply_scope_filter(reset_q, VerificationRecord, current_user)
+    reset_q.update({"assigned_to": None}, synchronize_session=False)
     db.commit()
 
     # 2. Ambil record yang belum diassign
@@ -27,6 +48,7 @@ def assign_tasks(req: AssignmentRequest, db: Session = Depends(get_db)):
         assigned_to=None,
         record_type="beda"
     )
+    query = apply_scope_filter(query, VerificationRecord, current_user)
 
     # 2. Filter berdasarkan metode
     if req.method == "range":
@@ -51,53 +73,7 @@ def assign_tasks(req: AssignmentRequest, db: Session = Depends(get_db)):
     # Jika manual/range/prefix dan hanya 1 operator, assign semua ke dia
     # Jika auto, bagi rata ke semua operator_ids
     batches = []
-    if req.method == "auto_unit":
-        from app.models import User
-        users = db.query(User).filter(User.id.in_(req.operator_ids)).all()
-        
-        unit_to_users = {}
-        for u in users:
-            if u.unit_penugasan:
-                for unit in [x.strip() for x in u.unit_penugasan.split(',') if x.strip()]:
-                    if unit not in unit_to_users:
-                        unit_to_users[unit] = []
-                    unit_to_users[unit].append(u.id)
-                    
-        unit_to_records = {}
-        unassigned_count = 0
-        
-        for rec in records:
-            u_val = rec.unit or ""
-            if not u_val or u_val not in unit_to_users or not unit_to_users[u_val]:
-                unassigned_count += 1
-                continue
-            if u_val not in unit_to_records:
-                unit_to_records[u_val] = []
-            unit_to_records[u_val].append(rec)
-            
-        batches_dict = {}
-        for unit, recs in unit_to_records.items():
-            ops = unit_to_users[unit]
-            n_ops_for_unit = len(ops)
-            chunk = len(recs) // n_ops_for_unit
-            for i, op_id in enumerate(ops):
-                start = i * chunk
-                end = start + chunk if i < n_ops_for_unit - 1 else len(recs)
-                batch_recs = recs[start:end]
-                for r in batch_recs:
-                    r.assigned_to = op_id
-                if batch_recs:
-                    batches_dict[op_id] = batches_dict.get(op_id, 0) + len(batch_recs)
-                    
-        for op_id, total in batches_dict.items():
-            batch = AssignmentBatch(session_id=req.session_id, operator_id=op_id, total_assigned=total)
-            db.add(batch)
-            batches.append({"operator_id": op_id, "total": total})
-            
-        if unassigned_count > 0:
-            pass # Maybe return a warning
-            
-    elif req.method == "auto" or (len(records) > 0 and n_ops > 1):
+    if req.method == "auto" or (len(records) > 0 and n_ops > 1):
         chunk = len(records) // n_ops
         for i, op_id in enumerate(req.operator_ids):
             start = i * chunk
@@ -143,16 +119,24 @@ def assign_tasks(req: AssignmentRequest, db: Session = Depends(get_db)):
     db.commit()
 
     assigned_count = sum(b['total'] for b in batches)
-    warn_msg = f" Ada {unassigned_count} data gagal dibagikan karena tidak ada unit / petugas untuk unit tersebut." if req.method == "auto_unit" and 'unassigned_count' in locals() and unassigned_count > 0 else ""
-    return {"message": f"Tugas berhasil dibagi ke {len(batches)} petugas.{warn_msg}", "distribution": batches, "total_processed": assigned_count}
+    return {"message": f"Tugas berhasil dibagi ke {len(batches)} petugas.", "distribution": batches, "total_processed": assigned_count}
 
 @router.get("/progress")
-def get_progress(session_id: int, db: Session = Depends(get_db)):
+def get_progress(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     from app.models import User
     from sqlalchemy import func
 
-    # Ambil set user_id yang masih ada di DB
-    existing_user_ids = {u.id for u in db.query(User.id).all()}
+    # Ambil set user_id yang masih ada di DB dan sesuai scope (agar ULP A tidak melihat tugas ULP B)
+    from sqlalchemy import or_
+    q_users = db.query(User.id)
+    if current_user.kode_unit:
+        q_users = q_users.filter(
+            or_(
+                User.kode_unit.like(f"{current_user.kode_unit}%"),
+                User.parent_id == current_user.id
+            )
+        )
+    existing_user_ids = {u.id for u in q_users.all()}
 
     batches = db.query(AssignmentBatch).filter_by(session_id=session_id).all()
 

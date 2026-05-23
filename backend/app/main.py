@@ -11,58 +11,79 @@ from app.database import engine, Base, SessionLocal
 # Buat semua tabel otomatis
 Base.metadata.create_all(bind=engine)
 
-# SQLite migration helper for new columns
+# SQLite/PostgreSQL migration helper for new columns
 def run_migrations():
     db = SessionLocal()
     try:
-        # Check and add columns to verification_records
-        db.execute(text("ALTER TABLE verification_records ADD COLUMN record_type VARCHAR(10) DEFAULT 'beda'"))
-    except Exception:
-        pass
-    try:
-        db.execute(text("ALTER TABLE verification_records ADD COLUMN reason_type VARCHAR(50)"))
-    except Exception:
-        pass
-    try:
-        db.execute(text("ALTER TABLE verification_records ADD COLUMN corrected_stand FLOAT"))
-    except Exception:
-        pass
+        # ── verification_records columns ──────────────────────────────
+        for col_sql in [
+            "ALTER TABLE verification_records ADD COLUMN record_type VARCHAR(10) DEFAULT 'beda'",
+            "ALTER TABLE verification_records ADD COLUMN reason_type VARCHAR(50)",
+            "ALTER TABLE verification_records ADD COLUMN corrected_stand FLOAT",
+            "ALTER TABLE verification_records ADD COLUMN kode_unit VARCHAR(20)",
+        ]:
+            try:
+                db.execute(text(col_sql))
+            except Exception:
+                pass
 
-    # Check and add columns to upload_sessions
-    try:
-        db.execute(text("ALTER TABLE upload_sessions ADD COLUMN file_match_name VARCHAR(200)"))
-    except Exception:
-        pass
-    try:
-        db.execute(text("ALTER TABLE upload_sessions ADD COLUMN file_beda_name VARCHAR(200)"))
-    except Exception:
-        pass
-    try:
-        db.execute(text("ALTER TABLE upload_sessions ADD COLUMN total_match INTEGER DEFAULT 0"))
-    except Exception:
-        pass
-    try:
-        db.execute(text("ALTER TABLE upload_sessions ADD COLUMN total_beda INTEGER DEFAULT 0"))
-    except Exception:
-        pass
+        # ── upload_sessions columns ───────────────────────────────────
+        for col_sql in [
+            "ALTER TABLE upload_sessions ADD COLUMN file_match_name VARCHAR(200)",
+            "ALTER TABLE upload_sessions ADD COLUMN file_beda_name VARCHAR(200)",
+            "ALTER TABLE upload_sessions ADD COLUMN total_match INTEGER DEFAULT 0",
+            "ALTER TABLE upload_sessions ADD COLUMN total_beda INTEGER DEFAULT 0",
+            "ALTER TABLE upload_sessions ADD COLUMN kode_unit VARCHAR(20)",
+        ]:
+            try:
+                db.execute(text(col_sql))
+            except Exception:
+                pass
 
-    # Check and add columns to reason_options
-    try:
-        db.execute(text("ALTER TABLE reason_options ADD COLUMN requires_stand_correction BOOLEAN DEFAULT 0"))
-    except Exception:
-        pass
+        # ── reason_options columns ────────────────────────────────────
+        try:
+            db.execute(text("ALTER TABLE reason_options ADD COLUMN requires_stand_correction BOOLEAN DEFAULT false"))
+        except Exception:
+            pass
 
-    db.commit()
-    db.close()
+        # ── users columns (kode_unit & parent_id) ─────────────────────
+        for col_sql in [
+            "ALTER TABLE users ADD COLUMN kode_unit VARCHAR(20)",
+            "ALTER TABLE users ADD COLUMN parent_id INTEGER",
+        ]:
+            try:
+                db.execute(text(col_sql))
+            except Exception:
+                pass
+
+        # ── PostgreSQL: upgrade RoleEnum type dengan nilai baru ───────
+        # Tambahkan nilai enum baru jika belum ada (PostgreSQL specific)
+        from app.database import engine as _engine
+        if "postgresql" in str(_engine.url):
+            for new_val in ["super_admin", "uid", "up3", "ulp"]:
+                try:
+                    db.execute(text(f"ALTER TYPE roleenum ADD VALUE IF NOT EXISTS '{new_val}'"))
+                except Exception:
+                    pass
+            # Update akun admin lama ke super_admin
+            try:
+                db.execute(text("UPDATE users SET role = 'super_admin' WHERE role IN ('admin')"))
+            except Exception:
+                pass
+
+        db.commit()
+    finally:
+        db.close()
 
 run_migrations()
+
 
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 app = FastAPI(
     title="PLN KWH Verification API",
     description="Backend untuk sistem verifikasi meter PLN",
-    version="1.0.0",
+    version="1.1.0",
     docs_url="/docs" if DEBUG else None,
     redoc_url="/redoc" if DEBUG else None,
     openapi_url="/openapi.json" if DEBUG else None,
@@ -108,9 +129,11 @@ def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_
     db = SessionLocal()
     try:
         from app.models import VerificationRecord, StatusEnum, UploadSession, RoleEnum
+        from app.permissions import apply_scope_filter
         
         # Base query for records
         query = db.query(VerificationRecord).filter(VerificationRecord.is_deleted == False)
+        query = apply_scope_filter(query, VerificationRecord, current_user)
         
         # Filter jika user adalah verifikator, hanya tampilkan tugasnya sendiri
         if current_user.role == RoleEnum.verifikator:
@@ -131,6 +154,7 @@ def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_
         
         # Data untuk chart: Progres per sesi
         session_query = db.query(UploadSession)
+        session_query = apply_scope_filter(session_query, UploadSession, current_user)
         if bulan:
             session_query = session_query.filter(UploadSession.bulan_verifikasi == bulan)
         sessions = session_query.order_by(UploadSession.id.desc()).limit(5).all()
@@ -144,6 +168,9 @@ def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_
                 VerificationRecord.is_deleted == False
             )
             
+            s_total_q = apply_scope_filter(s_total_q, VerificationRecord, current_user)
+            s_done_q = apply_scope_filter(s_done_q, VerificationRecord, current_user)
+            
             if current_user.role == RoleEnum.verifikator:
                 s_total_q = s_total_q.filter(VerificationRecord.assigned_to == current_user.id)
                 s_done_q = s_done_q.filter(VerificationRecord.assigned_to == current_user.id)
@@ -155,8 +182,10 @@ def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_
             if current_user.role == RoleEnum.verifikator and s_total == 0:
                 continue
 
+            local_index = apply_scope_filter(db.query(UploadSession), UploadSession, current_user).filter(UploadSession.id <= s.id).count()
+
             chart_data.append({
-                "name": f"Sesi {s.id}",
+                "name": f"Sesi {local_index}",
                 "done": s_done,
                 "total": s_total,
                 "pct": round(s_done / s_total * 100, 1) if s_total > 0 else 0
@@ -167,6 +196,192 @@ def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_
             "verified_reject": reject, "need_investigation": inv, 
             "anomaly": anomaly, "progress_pct": pct,
             "chart_data": chart_data[::-1] # Reverse to chronological
+        }
+    finally:
+        db.close()
+
+@app.get("/api/dashboard/progress-ulp")
+def progress_ulp(bulan: str = None, current_user: User = Depends(get_current_user)):
+    from app.database import SessionLocal
+    from sqlalchemy import func, case
+    from app.models import VerificationRecord, StatusEnum, UploadSession, User as DBUser, RoleEnum
+    from app.permissions import apply_scope_filter
+    db = SessionLocal()
+    try:
+        q = db.query(
+            VerificationRecord.kode_unit,
+            func.count(VerificationRecord.id).label('total'),
+            func.sum(case((VerificationRecord.status == StatusEnum.PENDING, 1), else_=0)).label('pending'),
+            func.sum(case((VerificationRecord.status == StatusEnum.VERIFIED_OK, 1), else_=0)).label('ok'),
+            func.sum(case((VerificationRecord.status == StatusEnum.VERIFIED_REJECT, 1), else_=0)).label('reject'),
+            func.sum(case((VerificationRecord.status == StatusEnum.NEED_INVESTIGATION, 1), else_=0)).label('inv')
+        ).filter(VerificationRecord.is_deleted == False)
+        
+        q = apply_scope_filter(q, VerificationRecord, current_user)
+        
+        if bulan:
+            q = q.join(UploadSession, VerificationRecord.session_id == UploadSession.id)\
+                 .filter(UploadSession.bulan_verifikasi == bulan)
+                 
+        grouped = q.group_by(VerificationRecord.kode_unit).all()
+        
+        result = []
+        for row in grouped:
+            ulp_user = db.query(DBUser).filter(DBUser.role == RoleEnum.ulp, DBUser.kode_unit == row.kode_unit).first()
+            ulp_name = ulp_user.full_name if ulp_user else f"Unit {row.kode_unit or 'N/A'}"
+            
+            total = row.total
+            ok = row.ok or 0
+            reject = row.reject or 0
+            inv = row.inv or 0
+            
+            result.append({
+                "kode_unit": row.kode_unit,
+                "nama_ulp": ulp_name,
+                "total": total,
+                "pending": row.pending or 0,
+                "verified_ok": ok,
+                "verified_reject": reject,
+                "need_investigation": inv,
+                "progress_pct": round((ok + reject + inv) / total * 100, 1) if total > 0 else 0
+            })
+            
+        # Urutkan berdasarkan unit
+        return sorted(result, key=lambda x: str(x['kode_unit']))
+    finally:
+        db.close()
+
+@app.get("/api/dashboard/uid")
+def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_user)):
+    from fastapi import HTTPException
+    from app.database import SessionLocal
+    from sqlalchemy import func, case
+    from app.models import VerificationRecord, StatusEnum, UploadSession, User as DBUser, RoleEnum
+    from datetime import datetime, timedelta
+
+    if current_user.role not in [RoleEnum.uid, RoleEnum.super_admin]:
+        raise HTTPException(status_code=403, detail="Hanya untuk role UID atau Super Admin")
+
+    db = SessionLocal()
+    try:
+        # 1. UP3 Leaderboard
+        up3_query = db.query(DBUser).filter(DBUser.role == RoleEnum.up3)
+        if current_user.kode_unit and current_user.role == RoleEnum.uid:
+            up3_query = up3_query.filter(DBUser.kode_unit.like(f"{current_user.kode_unit}%"))
+        up3_list = up3_query.all()
+        
+        leaderboard = []
+        for up3 in up3_list:
+            q = db.query(
+                func.count(VerificationRecord.id).label('total'),
+                func.sum(case((VerificationRecord.status != StatusEnum.PENDING, 1), else_=0)).label('done'),
+                func.sum(case((VerificationRecord.is_anomaly == True, 1), else_=0)).label('anomaly')
+            ).filter(
+                VerificationRecord.is_deleted == False,
+                VerificationRecord.kode_unit.like(f"{up3.kode_unit}%")
+            )
+            
+            if bulan:
+                q = q.join(UploadSession, VerificationRecord.session_id == UploadSession.id)\
+                     .filter(UploadSession.bulan_verifikasi == bulan)
+                     
+            stats = q.first()
+            total = stats.total or 0
+            done = stats.done or 0
+            
+            leaderboard.append({
+                "kode_up3": up3.kode_unit,
+                "nama_up3": up3.full_name,
+                "total": total,
+                "done": done,
+                "anomaly": stats.anomaly or 0,
+                "progress_pct": round((done / total * 100), 1) if total > 0 else 0
+            })
+            
+        leaderboard = sorted(leaderboard, key=lambda x: x['progress_pct'], reverse=True)
+
+        # 2. Daily Trend (7 hari terakhir dari data yang diverifikasi)
+        # Menghindari db dependent date-truncation, kita ambil records verified >= 7 days ago, lalu agregasi di python
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        trend_query = db.query(VerificationRecord.verified_at).filter(
+            VerificationRecord.is_deleted == False,
+            VerificationRecord.status != StatusEnum.PENDING,
+            VerificationRecord.verified_at >= seven_days_ago
+        )
+        if current_user.kode_unit and current_user.role == RoleEnum.uid:
+            trend_query = trend_query.filter(VerificationRecord.kode_unit.like(f"{current_user.kode_unit}%"))
+        if bulan:
+            trend_query = trend_query.join(UploadSession).filter(UploadSession.bulan_verifikasi == bulan)
+            
+        verified_dates = [r[0] for r in trend_query.all() if r[0]]
+        
+        # Agregasi ke dict (YYYY-MM-DD -> count)
+        date_counts = {}
+        for i in range(7):
+            d = (datetime.utcnow() - timedelta(days=6-i)).strftime("%Y-%m-%d")
+            date_counts[d] = 0
+            
+        for vd in verified_dates:
+            d_str = vd.strftime("%Y-%m-%d")
+            if d_str in date_counts:
+                date_counts[d_str] += 1
+                
+        daily_trend = [{"date": k, "count": v} for k, v in date_counts.items()]
+
+        # 3. Anomaly Breakdown (Group by reason_type)
+        anomaly_q = db.query(
+            VerificationRecord.reason_type, 
+            func.count(VerificationRecord.id).label('count')
+        ).filter(
+            VerificationRecord.is_deleted == False,
+            VerificationRecord.is_anomaly == True,
+            VerificationRecord.status != StatusEnum.PENDING
+        )
+        if current_user.kode_unit and current_user.role == RoleEnum.uid:
+            anomaly_q = anomaly_q.filter(VerificationRecord.kode_unit.like(f"{current_user.kode_unit}%"))
+        if bulan:
+            anomaly_q = anomaly_q.join(UploadSession).filter(UploadSession.bulan_verifikasi == bulan)
+            
+        anomaly_breakdown = [
+            {"reason": r.reason_type or "Lainnya", "count": r.count}
+            for r in anomaly_q.group_by(VerificationRecord.reason_type).all()
+        ]
+
+        # 4. Bottleneck / Pending Lama
+        # Cari sesi yang punya pending terbanyak / paling lama
+        bottleneck_q = db.query(
+            UploadSession.batch_name,
+            UploadSession.created_at,
+            func.sum(case((VerificationRecord.status == StatusEnum.PENDING, 1), else_=0)).label('pending_count')
+        ).join(VerificationRecord, UploadSession.id == VerificationRecord.session_id)\
+         .filter(VerificationRecord.is_deleted == False)\
+         .group_by(UploadSession.id)
+         
+        if current_user.kode_unit and current_user.role == RoleEnum.uid:
+            bottleneck_q = bottleneck_q.filter(VerificationRecord.kode_unit.like(f"{current_user.kode_unit}%"))
+        if bulan:
+            bottleneck_q = bottleneck_q.filter(UploadSession.bulan_verifikasi == bulan)
+            
+        # Ambil 5 batch dengan pending tertinggi dan dibuat lebih dari 1 hari lalu
+        yesterday = datetime.utcnow() - timedelta(days=1)
+        bottleneck_list = []
+        for row in bottleneck_q.all():
+            if row.pending_count > 0 and row.created_at < yesterday:
+                days_pending = (datetime.utcnow() - row.created_at).days
+                bottleneck_list.append({
+                    "batch_name": row.batch_name,
+                    "pending_count": row.pending_count,
+                    "days_pending": days_pending,
+                    "status": "Kritis" if days_pending > 3 else "Peringatan"
+                })
+        
+        bottlenecks = sorted(bottleneck_list, key=lambda x: x['pending_count'], reverse=True)[:5]
+
+        return {
+            "leaderboard": leaderboard,
+            "daily_trend": daily_trend,
+            "anomaly_breakdown": anomaly_breakdown,
+            "bottlenecks": bottlenecks
         }
     finally:
         db.close()

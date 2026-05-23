@@ -9,16 +9,27 @@ const inputStyle = { width: '100%', height: 36, padding: '0 11px', border: '1px 
 export default function UsersPage() {
     useEffect(() => { document.title = "Pengaturan | METRIK" }, [])
 
-    const { role } = useAuthStore()
+    const { role: currentRole, kode_unit: myKodeUnit } = useAuthStore()
     const qc = useQueryClient()
     const [activeTab, setActiveTab] = useState('akun') // 'akun' | 'alasan'
     const [showForm, setShowForm] = useState(false)
-    const [form, setForm] = useState({ username: '', password: '', full_name: '', role: 'verifikator', unit_penugasan: '' })
+    const [form, setForm] = useState({ username: '', password: '', full_name: '', role: 'verifikator', kode_unit: '', unit_penugasan: '' })
     const [showPassword, setShowPassword] = useState(false)
     const [reasonForm, setReasonForm] = useState({ value: '', label: '', sort_order: 0, requires_stand_correction: false })
     const [showReasonForm, setShowReasonForm] = useState(false)
     const [editingReasonId, setEditingReasonId] = useState(null)
     const [dialog, setDialog] = useState(null)
+
+    // Role apa saja yang bisa dibuat oleh role yang login
+    const CREATABLE_ROLES = {
+        super_admin: ['uid', 'up3', 'ulp', 'verifikator'],
+        uid:         ['up3', 'ulp', 'verifikator'],
+        up3:         ['ulp', 'verifikator'],
+        ulp:         ['verifikator'],
+    }
+    const ROLE_LABEL = { super_admin: 'Super Admin', uid: 'UID', up3: 'UP3', ulp: 'ULP', verifikator: 'Verifikator' }
+    const creatableRoles = CREATABLE_ROLES[currentRole] || []
+    const canManageReasons = ['super_admin', 'uid'].includes(currentRole)
 
     const { data: users = [], isLoading } = useQuery({
         queryKey: ['users'],
@@ -36,9 +47,9 @@ export default function UsersPage() {
             toast.success('User berhasil dibuat')
             qc.invalidateQueries(['users'])
             setShowForm(false)
-            setForm({ username: '', password: '', full_name: '', role: 'verifikator', unit_penugasan: '' })
+            setForm({ username: '', password: '', full_name: '', role: 'verifikator', kode_unit: '', unit_penugasan: '' })
         },
-        onError: () => toast.error('Gagal membuat user'),
+        onError: (err) => toast.error(err.response?.data?.detail || 'Gagal membuat user'),
     })
 
     const deleteUser = useMutation({
@@ -89,7 +100,7 @@ export default function UsersPage() {
         onError: () => toast.error('Gagal menghapus alasan'),
     })
 
-    if (role !== 'admin') return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Akses ditolak.</div>
+    if (!['super_admin', 'uid', 'up3', 'ulp'].includes(currentRole)) return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Akses ditolak.</div>
 
     return (
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
@@ -135,28 +146,30 @@ export default function UsersPage() {
                     <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.4px', margin: 0 }}>Pengaturan Sistem</h1>
                     <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Kelola akun dan opsi konfigurasi sistem</p>
                 </div>
-                <button
-                    onClick={() => {
-                        if (activeTab === 'akun') {
-                            setShowForm(!showForm);
-                        } else {
-                            if (showReasonForm) {
-                                setShowReasonForm(false);
-                                setEditingReasonId(null);
-                                setReasonForm({ value: '', label: '', sort_order: 0, requires_stand_correction: false });
+                {(activeTab === 'akun' || canManageReasons) && (
+                    <button
+                        onClick={() => {
+                            if (activeTab === 'akun') {
+                                setShowForm(!showForm);
                             } else {
-                                setShowReasonForm(true);
+                                if (showReasonForm) {
+                                    setShowReasonForm(false);
+                                    setEditingReasonId(null);
+                                    setReasonForm({ value: '', label: '', sort_order: 0, requires_stand_correction: false });
+                                } else {
+                                    setShowReasonForm(true);
+                                }
                             }
-                        }
-                    }}
-                    style={{
-                        background: (activeTab === 'akun' ? showForm : showReasonForm) ? '#f1f5f9' : '#0f172a', 
-                        color: (activeTab === 'akun' ? showForm : showReasonForm) ? '#374151' : '#fff',
-                        border: '1px solid #e2e8f0', borderRadius: 7, padding: '8px 16px',
-                        cursor: 'pointer', fontWeight: 500, fontSize: 12, transition: 'all 0.15s'
-                    }}>
-                    {(activeTab === 'akun' ? showForm : showReasonForm) ? 'Batal' : (activeTab === 'akun' ? 'Tambah User' : 'Tambah Alasan')}
-                </button>
+                        }}
+                        style={{
+                            background: (activeTab === 'akun' ? showForm : showReasonForm) ? '#f1f5f9' : '#0f172a', 
+                            color: (activeTab === 'akun' ? showForm : showReasonForm) ? '#374151' : '#fff',
+                            border: '1px solid #e2e8f0', borderRadius: 7, padding: '8px 16px',
+                            cursor: 'pointer', fontWeight: 500, fontSize: 12, transition: 'all 0.15s'
+                        }}>
+                        {(activeTab === 'akun' ? showForm : showReasonForm) ? 'Batal' : (activeTab === 'akun' ? 'Tambah User' : 'Tambah Alasan')}
+                    </button>
+                )}
             </div>
 
             {/* Tabs */}
@@ -202,11 +215,21 @@ export default function UsersPage() {
                         <div>
                             <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Role</label>
                             <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} style={inputStyle}>
-                                <option value="verifikator">Verifikator</option>
-                                <option value="supervisor">Supervisor</option>
-                                <option value="admin">Admin</option>
+                                {creatableRoles.map(r => (
+                                    <option key={r} value={r}>{ROLE_LABEL[r] || r}</option>
+                                ))}
                             </select>
                         </div>
+                        {['uid','up3','ulp'].includes(form.role) && (
+                            <div>
+                                <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Kode Unit {myKodeUnit ? `(awali dengan ${myKodeUnit})` : ''}</label>
+                                <input
+                                    type="text" value={form.kode_unit} placeholder={`cth: ${myKodeUnit || '17'}1`}
+                                    onChange={e => setForm(f => ({ ...f, kode_unit: e.target.value }))}
+                                    style={inputStyle}
+                                />
+                            </div>
+                        )}
                         <div>
                             <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Unit Penugasan (Opsional)</label>
                             <input
@@ -238,7 +261,7 @@ export default function UsersPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
                                 <tr style={{ background: '#f8fafc' }}>
-                                    {['Nama Lengkap', 'Username', 'Role', 'Unit', ''].map(h => (
+                                    {['Nama Lengkap', 'Username', 'Role', 'Kode Unit', ''].map(h => (
                                         <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -251,15 +274,15 @@ export default function UsersPage() {
                                         <td style={{ padding: '12px 16px' }}>
                                             <span style={{
                                                 padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 500,
-                                                background: u.role === 'admin' ? '#eff6ff' : u.role === 'supervisor' ? '#fdf4ff' : '#f0fdf4',
-                                                color: u.role === 'admin' ? '#1d4ed8' : u.role === 'supervisor' ? '#7c3aed' : '#16a34a',
-                                                border: `1px solid ${u.role === 'admin' ? '#bfdbfe' : u.role === 'supervisor' ? '#e9d5ff' : '#bbf7d0'}`
+                                                background: u.role === 'super_admin' ? '#fef3c7' : u.role === 'uid' ? '#eff6ff' : u.role === 'up3' ? '#fdf4ff' : u.role === 'ulp' ? '#f0fdf4' : '#f8fafc',
+                                                color: u.role === 'super_admin' ? '#b45309' : u.role === 'uid' ? '#1d4ed8' : u.role === 'up3' ? '#7c3aed' : u.role === 'ulp' ? '#16a34a' : '#64748b',
+                                                border: `1px solid ${u.role === 'super_admin' ? '#fde68a' : u.role === 'uid' ? '#bfdbfe' : u.role === 'up3' ? '#e9d5ff' : u.role === 'ulp' ? '#bbf7d0' : '#e2e8f0'}`
                                             }}>
-                                                {u.role}
+                                                {ROLE_LABEL[u.role] || u.role}
                                             </span>
                                         </td>
                                         <td style={{ padding: '12px 16px', color: '#64748b', fontSize: 11, fontWeight: 500 }}>
-                                            {u.unit_penugasan || '—'}
+                                            {u.kode_unit || '—'}
                                         </td>
                                         <td style={{ padding: '12px 16px', display: 'flex', gap: 6 }}>
                                             <button
@@ -384,26 +407,30 @@ export default function UsersPage() {
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '12px 16px', textAlign: 'right', display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                                                    <button onClick={() => {
-                                                        setEditingReasonId(r.id);
-                                                        setReasonForm({
-                                                            value: r.value,
-                                                            label: r.label,
-                                                            sort_order: r.sort_order,
-                                                            requires_stand_correction: r.requires_stand_correction
-                                                        });
-                                                        setShowReasonForm(true);
-                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                    }} style={{ background: 'none', color: '#3b82f6', border: '1px solid #bfdbfe', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
-                                                        Edit
-                                                    </button>
-                                                    <button onClick={() => setDialog({
-                                                        type: 'confirm', title: 'Hapus Alasan', danger: true,
-                                                        message: `Hapus alasan "${r.label}"?`,
-                                                        onConfirm: () => deleteReason.mutate(r.id)
-                                                    })} style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
-                                                        Hapus
-                                                    </button>
+                                                    {canManageReasons && (
+                                                        <>
+                                                            <button onClick={() => {
+                                                                setEditingReasonId(r.id);
+                                                                setReasonForm({
+                                                                    value: r.value,
+                                                                    label: r.label,
+                                                                    sort_order: r.sort_order,
+                                                                    requires_stand_correction: r.requires_stand_correction
+                                                                });
+                                                                setShowReasonForm(true);
+                                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                            }} style={{ background: 'none', color: '#3b82f6', border: '1px solid #bfdbfe', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
+                                                                Edit
+                                                            </button>
+                                                            <button onClick={() => setDialog({
+                                                                type: 'confirm', title: 'Hapus Alasan', danger: true,
+                                                                message: `Hapus alasan "${r.label}"?`,
+                                                                onConfirm: () => deleteReason.mutate(r.id)
+                                                            })} style={{ background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
+                                                                Hapus
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}

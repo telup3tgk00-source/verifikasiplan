@@ -45,7 +45,7 @@ export default function ExportPage() {
         }
     }
 
-    if (role !== 'admin' && role !== 'supervisor') return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Akses ditolak.</div>
+    if (!['super_admin', 'uid', 'up3', 'ulp'].includes(role)) return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Akses ditolak.</div>
 
     const selectedSession = sessions.find(s => String(s.id) === String(filter.session_id))
 

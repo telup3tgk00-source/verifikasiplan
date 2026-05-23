@@ -13,7 +13,7 @@ export default function AssignmentPage() {
     const qc = useQueryClient()
 
     const [sessionId, setSessionId] = useState('')
-    const [method, setMethod] = useState('auto_unit')
+    const [method, setMethod] = useState('auto')
     const [selectedOps, setSelectedOps] = useState([])
     const [rangeStart, setRangeStart] = useState('')
     const [rangeEnd, setRangeEnd] = useState('')
@@ -63,12 +63,11 @@ export default function AssignmentPage() {
 
     const toggleOp = (id) => setSelectedOps(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
-    if (role !== 'admin' && role !== 'supervisor') return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Akses ditolak.</div>
+    if (!['super_admin', 'ulp'].includes(role)) return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Akses ditolak.</div>
 
     const methods = [
-        { key: 'auto_unit', label: 'Berdasarkan Unit', desc: 'Bagi otomatis ke petugas sesuai Unit Penugasan-nya' },
-        { key: 'auto', label: 'Auto Split', desc: 'Bagi rata semua record ke yang dipilih' },
-        { key: 'range', label: 'Range ID', desc: 'Berdasarkan rentang ID' },
+        { key: 'auto', label: 'Bagi Rata (Auto Split)', desc: 'Bagi rata semua data ke verifikator yang dipilih' },
+        { key: 'range', label: 'Range ID', desc: 'Berdasarkan rentang ID Pelanggan' },
         { key: 'prefix', label: 'Prefix ID', desc: 'Berdasarkan kode awalan' },
     ]
 
