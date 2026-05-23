@@ -35,7 +35,37 @@ def create_reason(req: ReasonCreate, db: Session = Depends(get_db), current_user
         raise HTTPException(status_code=403, detail="Hanya UID dan Super Admin yang dapat menambah alasan")
     existing = db.query(ReasonOption).filter_by(value=req.value).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Key/value alasan sudah ada")
+        if existing.is_active:
+            raise HTTPException(status_code=400, detail="Key/value alasan sudah ada dan masih aktif")
+        else:
+            # Reaktivasi alasan yang sudah dihapus secara soft-delete
+            conflict = db.query(ReasonOption).filter(
+                ReasonOption.sort_order == req.sort_order, 
+                ReasonOption.id != existing.id,
+                ReasonOption.is_active == True
+            ).first()
+            if conflict:
+                db.query(ReasonOption).filter(
+                    ReasonOption.sort_order >= req.sort_order,
+                    ReasonOption.id != existing.id,
+                    ReasonOption.is_active == True
+                ).update({"sort_order": ReasonOption.sort_order + 1}, synchronize_session=False)
+            
+            existing.label = req.label
+            existing.sort_order = req.sort_order
+            existing.requires_stand_correction = req.requires_stand_correction
+            existing.is_active = True
+            db.commit()
+            db.refresh(existing)
+            return existing
+
+    # Auto-Shift untuk Alasan yang benar-benar baru
+    conflict = db.query(ReasonOption).filter_by(sort_order=req.sort_order, is_active=True).first()
+    if conflict:
+        db.query(ReasonOption).filter(ReasonOption.sort_order >= req.sort_order, ReasonOption.is_active == True).update(
+            {"sort_order": ReasonOption.sort_order + 1}, synchronize_session=False
+        )
+
     reason = ReasonOption(**req.model_dump())
     db.add(reason)
     db.commit()
@@ -49,6 +79,24 @@ def update_reason(reason_id: int, req: ReasonCreate, db: Session = Depends(get_d
     reason = db.query(ReasonOption).filter_by(id=reason_id).first()
     if not reason:
         raise HTTPException(status_code=404, detail="Alasan tidak ditemukan")
+
+    # Auto-Shift untuk Update: Jika urutan diubah dan menabrak yang lain
+    if req.sort_order != reason.sort_order:
+        conflict = db.query(ReasonOption).filter(
+            ReasonOption.sort_order == req.sort_order, 
+            ReasonOption.id != reason_id,
+            ReasonOption.is_active == True
+        ).first()
+        if conflict:
+            db.query(ReasonOption).filter(
+                ReasonOption.sort_order >= req.sort_order, 
+                ReasonOption.id != reason_id,
+                ReasonOption.is_active == True
+            ).update(
+                {"sort_order": ReasonOption.sort_order + 1},
+                synchronize_session=False
+            )
+
     reason.label = req.label
     reason.sort_order = req.sort_order
     reason.requires_stand_correction = req.requires_stand_correction

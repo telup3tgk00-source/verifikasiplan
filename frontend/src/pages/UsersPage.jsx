@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../api/axios'
 import { toast } from 'sonner'
@@ -19,6 +19,7 @@ export default function UsersPage() {
     const [showReasonForm, setShowReasonForm] = useState(false)
     const [editingReasonId, setEditingReasonId] = useState(null)
     const [dialog, setDialog] = useState(null)
+    const [searchQuery, setSearchQuery] = useState('')
 
     // Role apa saja yang bisa dibuat oleh role yang login
     const CREATABLE_ROLES = {
@@ -40,6 +41,16 @@ export default function UsersPage() {
         queryKey: ['reasons'],
         queryFn: () => api.get('/api/settings/reasons').then(r => r.data),
     })
+
+    const filteredUsers = useMemo(() => {
+        if (!searchQuery) return users;
+        const q = searchQuery.toLowerCase();
+        return users.filter(u => 
+            (u.username && u.username.toLowerCase().includes(q)) ||
+            (u.full_name && u.full_name.toLowerCase().includes(q)) ||
+            (u.kode_unit && u.kode_unit.toLowerCase().includes(q))
+        );
+    }, [users, searchQuery])
 
     const createUser = useMutation({
         mutationFn: (data) => api.post('/api/users/', data),
@@ -252,6 +263,17 @@ export default function UsersPage() {
                 </div>
             )}
 
+            {/* Table Header Controls */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+                <input
+                    type="text"
+                    placeholder="Cari nama, username, atau unit..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ ...inputStyle, width: 250 }}
+                />
+            </div>
+
             {/* Table */}
             <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 {isLoading ? (
@@ -267,7 +289,7 @@ export default function UsersPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {users.map(u => (
+                                {filteredUsers.map(u => (
                                     <tr key={u.id} style={{ borderTop: '1px solid #f1f5f9' }}>
                                         <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a' }}>{u.full_name}</td>
                                         <td style={{ padding: '12px 16px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{u.username}</td>
@@ -400,7 +422,7 @@ export default function UsersPage() {
                                                 <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a', width: 60, textAlign: 'center' }}>{r.sort_order}</td>
                                                 <td style={{ padding: '12px 16px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{r.value}</td>
                                                 <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a' }}>{r.label}</td>
-                                                <td style={{ padding: '12px 16px', color: '#0f172a', fontSize: 12 }}>{r.requires_stand_correction ? '✅ Ya' : '❌ Tidak'}</td>
+                                                <td style={{ padding: '12px 16px', fontSize: 12, fontWeight: 600, color: r.requires_stand_correction ? '#16a34a' : '#ef4444' }}>{r.requires_stand_correction ? 'Ya' : 'Tidak'}</td>
                                                 <td style={{ padding: '12px 16px' }}>
                                                     <span style={{ padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: r.is_active ? '#f0fdf4' : '#f1f5f9', color: r.is_active ? '#16a34a' : '#64748b', border: `1px solid ${r.is_active ? '#bbf7d0' : '#e2e8f0'}` }}>
                                                         {r.is_active ? 'Aktif' : 'Nonaktif'}

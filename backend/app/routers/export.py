@@ -16,9 +16,18 @@ from sqlalchemy import or_, and_
 from app.routers.auth import get_current_user
 from app.permissions import CAN_EXPORT, apply_scope_filter
 
-def _build_query(db: Session, session_id: int, filter_status: str, record_type: str, operator_id, current_user):
+def _build_query(db: Session, session_id: int, filter_status: str, record_type: str, operator_id, current_user, bulan: str = None):
     """Build the filtered SQLAlchemy query (returns query object, not results)."""
-    q = db.query(VerificationRecord).filter_by(is_deleted=False, session_id=session_id)
+    q = db.query(VerificationRecord).filter_by(is_deleted=False)
+    
+    if session_id:
+        q = q.filter(VerificationRecord.session_id == session_id)
+        
+    if bulan:
+        from app.models import UploadSession
+        q = q.join(UploadSession, VerificationRecord.session_id == UploadSession.id)\
+             .filter(UploadSession.bulan_verifikasi == bulan)
+             
     q = apply_scope_filter(q, VerificationRecord, current_user)
 
     if filter_status != "all":
@@ -80,7 +89,8 @@ def _generate_xlsx_bytes(
     filter_status: str,
     record_type: str,
     operator_id,
-    current_user
+    current_user,
+    bulan: str = None
 ) -> io.BytesIO:
     """
     Build the Excel file in memory using write_only mode and yield_per
@@ -92,7 +102,7 @@ def _generate_xlsx_bytes(
     users = {u.id: u.full_name for u in db.query(User).all()}
     reasons_map = {r.value: r.label for r in db.query(ReasonOption).all()}
 
-    q = _build_query(db, session_id, filter_status, record_type, operator_id, current_user)
+    q = _build_query(db, session_id, filter_status, record_type, operator_id, current_user, bulan)
 
     wb = Workbook(write_only=True)
     ws = wb.create_sheet("Data Verifikasi")
@@ -150,7 +160,7 @@ def _generate_xlsx_bytes(
     return buf
 
 
-def _stream_xlsx_in_background(db: Session, session_id: int, filter_status: str, record_type: str, operator_id, current_user):
+def _stream_xlsx_in_background(db: Session, session_id: int, filter_status: str, record_type: str, operator_id, current_user, bulan: str = None):
     """
     Generator yang membangun XLSX di background thread, kemudian
     yield hasilnya dalam chunk 1MB agar Nginx tidak timeout.
@@ -166,7 +176,7 @@ def _stream_xlsx_in_background(db: Session, session_id: int, filter_status: str,
     def worker():
         try:
             result_holder["buf"] = _generate_xlsx_bytes(
-                db, session_id, filter_status, record_type, operator_id, current_user
+                db, session_id, filter_status, record_type, operator_id, current_user, bulan
             )
         except Exception as e:
             error_holder["err"] = e
@@ -189,7 +199,8 @@ def _stream_xlsx_in_background(db: Session, session_id: int, filter_status: str,
 
 @router.get("/")
 def export_excel(
-    session_id: int = Query(...),
+    session_id: int = Query(None),
+    bulan: str = Query(None),
     filter_status: str = Query("all"),
     record_type: str = Query("all"),
     operator_id: int = Query(None),
@@ -201,9 +212,12 @@ def export_excel(
     if current_user.role not in CAN_EXPORT:
         raise HTTPException(status_code=403, detail="Hanya role ULP ke atas yang dapat mengekspor data")
 
+    if not session_id and not bulan:
+        raise HTTPException(status_code=400, detail="Harus menyertakan session_id atau bulan")
+
     fname = f"verifikasi_kwh_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return StreamingResponse(
-        _stream_xlsx_in_background(db, session_id, filter_status, record_type, operator_id, current_user),
+        _stream_xlsx_in_background(db, session_id, filter_status, record_type, operator_id, current_user, bulan),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={fname}"}
     )

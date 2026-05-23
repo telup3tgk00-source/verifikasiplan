@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../api/axios'
 import { toast } from 'sonner'
@@ -11,30 +11,51 @@ export default function ExportPage() {
 
     const { role } = useAuthStore()
     const [loading, setLoading] = useState(false)
-    const [filter, setFilter] = useState({ status: '', session_id: '', record_type: '' })
+    const [exportMode, setExportMode] = useState('sesi')
+    const [filter, setFilter] = useState({ status: '', session_id: '', record_type: '', bulan: '' })
 
     const { data: sessions = [] } = useQuery({
         queryKey: ['sessions'],
         queryFn: () => api.get('/api/upload/sessions').then(r => r.data),
     })
 
+    const uniqueBulan = useMemo(() => {
+        if (!sessions) return []
+        const bln = sessions.map(s => s.bulan_verifikasi).filter(Boolean)
+        return [...new Set(bln)].sort((a, b) => b.localeCompare(a))
+    }, [sessions])
+
+    const formatBulan = (val) => {
+        if (!val || val.length !== 6) return val
+        const y = val.substring(0, 4)
+        const m = val.substring(4, 6)
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+        return `${months[parseInt(m) - 1] || m} ${y}`
+    }
+
     async function handleExport() {
-        if (!filter.session_id) return toast.error('Pilih sesi terlebih dahulu')
+        if (exportMode === 'sesi' && !filter.session_id) return toast.error('Pilih sesi terlebih dahulu')
+        if (exportMode === 'bulan' && !filter.bulan) return toast.error('Pilih bulan terlebih dahulu')
+        
         setLoading(true)
         try {
+            const params = {
+                filter_status: filter.status || 'all',
+                record_type: filter.record_type || 'all',
+            }
+            if (exportMode === 'sesi') params.session_id = filter.session_id;
+            if (exportMode === 'bulan') params.bulan = filter.bulan;
+
             const res = await api.get('/api/export/', {
-                params: {
-                    session_id: filter.session_id,
-                    filter_status: filter.status || 'all',
-                    record_type: filter.record_type || 'all',
-                },
+                params,
                 responseType: 'blob',
             })
             const url = URL.createObjectURL(res.data)
             const a = document.createElement('a')
             a.href = url
             const tipe = filter.record_type ? `_${filter.record_type}` : ''
-            a.download = `hasil_final${tipe}_sesi${filter.session_id}_${new Date().toISOString().slice(0, 10)}.xlsx`
+            const identifier = exportMode === 'sesi' ? `sesi${filter.session_id}` : `bulan${filter.bulan}`
+            a.download = `hasil_final${tipe}_${identifier}_${new Date().toISOString().slice(0, 10)}.xlsx`
             a.click()
             URL.revokeObjectURL(url)
             toast.success('File berhasil didownload')
@@ -59,7 +80,23 @@ export default function ExportPage() {
             <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: 24, maxWidth: 500 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 18 }}>Parameter Export</div>
 
-                {/* Session selector */}
+                {/* Mode Selector */}
+                <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Mode Export</label>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                            <input type="radio" name="mode" checked={exportMode === 'sesi'} onChange={() => setExportMode('sesi')} />
+                            Berdasarkan Sesi
+                        </label>
+                        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                            <input type="radio" name="mode" checked={exportMode === 'bulan'} onChange={() => setExportMode('bulan')} />
+                            {['uid', 'super_admin'].includes(role) ? 'Keseluruhan Provinsi (Per Bulan)' : role === 'up3' ? 'Seluruh ULP di UP3 Ini (Per Bulan)' : 'Semua Data ULP Ini (Per Bulan)'}
+                        </label>
+                    </div>
+                </div>
+
+                {/* Session / Bulan selector */}
+                {exportMode === 'sesi' ? (
                 <div style={{ marginBottom: 14 }}>
                     <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Sesi Upload</label>
                     <select value={filter.session_id} onChange={e => setFilter(f => ({ ...f, session_id: e.target.value }))} style={selectStyle}>
@@ -71,6 +108,17 @@ export default function ExportPage() {
                         ))}
                     </select>
                 </div>
+                ) : (
+                <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Pilih Bulan</label>
+                    <select value={filter.bulan} onChange={e => setFilter(f => ({ ...f, bulan: e.target.value }))} style={selectStyle}>
+                        <option value="">Pilih bulan...</option>
+                        {uniqueBulan.map(b => (
+                            <option key={b} value={b}>{formatBulan(b)}</option>
+                        ))}
+                    </select>
+                </div>
+                )}
 
                 {/* Summary card */}
                 {selectedSession && (
@@ -112,11 +160,11 @@ export default function ExportPage() {
 
                 <button
                     onClick={handleExport}
-                    disabled={loading || !filter.session_id}
+                    disabled={loading || (exportMode === 'sesi' && !filter.session_id) || (exportMode === 'bulan' && !filter.bulan)}
                     style={{
                         background: '#0f172a', color: '#fff', border: 'none', borderRadius: 7,
-                        padding: '10px 24px', cursor: loading || !filter.session_id ? 'not-allowed' : 'pointer',
-                        fontWeight: 600, fontSize: 13, opacity: loading || !filter.session_id ? 0.5 : 1,
+                        padding: '10px 24px', cursor: loading || (exportMode === 'sesi' && !filter.session_id) || (exportMode === 'bulan' && !filter.bulan) ? 'not-allowed' : 'pointer',
+                        fontWeight: 600, fontSize: 13, opacity: loading || (exportMode === 'sesi' && !filter.session_id) || (exportMode === 'bulan' && !filter.bulan) ? 0.5 : 1,
                         transition: 'opacity 0.15s', width: '100%'
                     }}>
                     {loading ? 'Mengexport...' : '⬇ Download Excel'}

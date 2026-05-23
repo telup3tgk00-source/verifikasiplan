@@ -1,10 +1,12 @@
-import { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../api/axios'
+import { useAuthStore } from '../store/authStore'
 
 export default function ProgressPage() {
     useEffect(() => { document.title = "Progres Operator | METRIK" }, [])
 
+    const { role } = useAuthStore()
     const [selectedBulan, setSelectedBulan] = useState('')
 
     const { data: sessions } = useQuery({
@@ -35,6 +37,41 @@ export default function ProgressPage() {
         queryFn: () => api.get(`/api/dashboard/progress-ulp${selectedBulan ? `?bulan=${selectedBulan}` : ''}`).then(r => r.data),
         refetchInterval: 15000,
     })
+
+    const isUID = role === 'uid' || role === 'super_admin';
+
+    const groupedProgress = useMemo(() => {
+        if (!Array.isArray(ulpProgress)) return [];
+        if (!isUID) return ulpProgress;
+
+        const groups = {};
+        ulpProgress.forEach(row => {
+            if (!row || !row.kode_unit) return;
+            const up3 = String(row.kode_unit).substring(0, 3);
+            if (!groups[up3]) {
+                groups[up3] = {
+                    up3_code: up3,
+                    total: 0, verified_ok: 0, need_investigation: 0, pending: 0,
+                    children: []
+                };
+            }
+            groups[up3].total += Number(row.total || 0);
+            groups[up3].verified_ok += Number(row.verified_ok || 0);
+            groups[up3].need_investigation += Number(row.need_investigation || 0);
+            groups[up3].pending += Number(row.pending || 0);
+            groups[up3].children.push(row);
+        });
+
+        return Object.values(groups).map(g => {
+            g.progress_pct = g.total > 0 ? Math.round((g.verified_ok + g.need_investigation) / g.total * 1000) / 10 : 0;
+            return g;
+        });
+    }, [ulpProgress, isUID]);
+
+    const getUp3Name = (code) => {
+        const map = { '171': 'TANJUNG KARANG', '172': 'METRO', '173': 'KOTABUMI' };
+        return map[code] || code;
+    };
 
     if (isLoading) return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, color: '#94a3b8', fontSize: 13 }}>
@@ -141,7 +178,7 @@ export default function ProgressPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {ulpProgress.map((row, idx) => (
+                                {!isUID && ulpProgress.map((row, idx) => (
                                     <tr key={row?.kode_unit || idx} style={{ borderTop: '1px solid #f1f5f9' }}>
                                         <td style={{ padding: '10px 16px', color: '#0f172a', fontWeight: 500 }}>
                                             {row?.nama_ulp} <span style={{ color: '#94a3b8', fontSize: 11 }}>({row?.kode_unit})</span>
@@ -160,6 +197,51 @@ export default function ProgressPage() {
                                             </span>
                                         </td>
                                     </tr>
+                                ))}
+
+                                {isUID && groupedProgress.map(g => (
+                                    <React.Fragment key={g.up3_code}>
+                                        {/* Header Row for UP3 */}
+                                        <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', borderBottom: '1px solid #e2e8f0' }}>
+                                            <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }} colSpan={1}>
+                                                UP3 {getUp3Name(g.up3_code)} <span style={{ color: '#64748b', fontSize: 11, fontWeight: 500 }}>({g.up3_code})</span>
+                                            </td>
+                                            <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{g.total.toLocaleString()}</td>
+                                            <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>{g.verified_ok.toLocaleString()}</td>
+                                            <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#d97706' }}>{g.need_investigation.toLocaleString()}</td>
+                                            <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#64748b' }}>{g.pending.toLocaleString()}</td>
+                                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                                <span style={{ 
+                                                    padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700,
+                                                    background: g.progress_pct >= 100 ? '#16a34a' : g.progress_pct > 0 ? '#2563eb' : '#64748b',
+                                                    color: '#fff'
+                                                }}>
+                                                    {g.progress_pct}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {/* Children Rows for ULP */}
+                                        {g.children.map((row, idx) => (
+                                            <tr key={row.kode_unit || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                <td style={{ padding: '10px 16px 10px 32px', color: '#475569', fontWeight: 500 }}>
+                                                    ↳ {row.nama_ulp} <span style={{ color: '#94a3b8', fontSize: 11 }}>({row.kode_unit})</span>
+                                                </td>
+                                                <td style={{ padding: '10px 16px', textAlign: 'right', color: '#475569' }}>{Number(row.total || 0).toLocaleString()}</td>
+                                                <td style={{ padding: '10px 16px', textAlign: 'right', color: '#16a34a' }}>{Number(row.verified_ok || 0).toLocaleString()}</td>
+                                                <td style={{ padding: '10px 16px', textAlign: 'right', color: '#d97706' }}>{Number(row.need_investigation || 0).toLocaleString()}</td>
+                                                <td style={{ padding: '10px 16px', textAlign: 'right', color: '#94a3b8' }}>{Number(row.pending || 0).toLocaleString()}</td>
+                                                <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                                                    <span style={{ 
+                                                        padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                                                        background: Number(row.progress_pct || 0) >= 100 ? '#f0fdf4' : Number(row.progress_pct || 0) > 0 ? '#eff6ff' : '#f1f5f9',
+                                                        color: Number(row.progress_pct || 0) >= 100 ? '#16a34a' : Number(row.progress_pct || 0) > 0 ? '#2563eb' : '#94a3b8'
+                                                    }}>
+                                                        {Number(row.progress_pct || 0)}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </React.Fragment>
                                 ))}
                             </tbody>
                         </table>
