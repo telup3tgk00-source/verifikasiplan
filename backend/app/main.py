@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
-from app.routers import auth, users, records, upload, assignments, export, notifications, foto, settings
+from app.routers import auth, users, records, upload, assignments, export, notifications, foto, settings, audit
 from app import models
 
 from sqlalchemy import text
@@ -114,6 +114,7 @@ app.include_router(export.router,        prefix="/api/export",        tags=["Exp
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(foto.router,          prefix="/api",               tags=["Foto Meter"])
 app.include_router(settings.router,      prefix="/api/settings",      tags=["Settings"])
+app.include_router(audit.router,         prefix="/api/audit",         tags=["Audit"])
 
 @app.get("/")
 def root():
@@ -264,8 +265,14 @@ def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_us
 
     db = SessionLocal()
     try:
-        # 1. Leaderboard (UP3 untuk UID, ULP untuk UP3)
-        target_role = RoleEnum.up3 if current_user.role in [RoleEnum.uid, RoleEnum.super_admin] else RoleEnum.ulp
+        # 1. Leaderboard (UID untuk Super Admin, UP3 untuk UID, ULP untuk UP3)
+        if current_user.role == RoleEnum.super_admin:
+            target_role = RoleEnum.uid
+        elif current_user.role == RoleEnum.uid:
+            target_role = RoleEnum.up3
+        else:
+            target_role = RoleEnum.ulp
+            
         sub_query = db.query(DBUser).filter(DBUser.role == target_role)
         if current_user.kode_unit:
             sub_query = sub_query.filter(DBUser.kode_unit.like(f"{current_user.kode_unit}%"))

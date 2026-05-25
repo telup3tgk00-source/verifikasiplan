@@ -22,7 +22,7 @@ export const useAuthStore = create(
 
 // Helper untuk cek apakah role punya akses ke menu tertentu
 export const MENU_ACCESS = {
-    super_admin: ['dashboard', 'upload', 'pembagian', 'progres', 'export', 'settings', 'verifikasi'],
+    super_admin: ['dashboard', 'upload', 'pembagian', 'progres', 'export', 'settings', 'verifikasi', 'audit'],
     uid:         ['dashboard', 'progres', 'export', 'settings', 'verifikasi'],
     up3:         ['dashboard', 'upload', 'progres', 'export', 'settings', 'verifikasi'],
     ulp:         ['dashboard', 'pembagian', 'progres', 'settings', 'export', 'verifikasi'],

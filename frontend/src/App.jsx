@@ -9,6 +9,7 @@ import AssignmentPage from './pages/AssignmentPage'
 import ProgressPage from './pages/ProgressPage'
 import ExportPage from './pages/ExportPage'
 import UsersPage from './pages/UsersPage'
+import AuditPage from './pages/AuditPage'
 
 function ProtectedRoute({ children, menu }) {
   const { token, role } = useAuthStore()
@@ -41,6 +42,9 @@ export default function App() {
           } />
           <Route path="users" element={
             <ProtectedRoute menu="settings"><UsersPage /></ProtectedRoute>
+          } />
+          <Route path="audit" element={
+            <ProtectedRoute menu="audit"><AuditPage /></ProtectedRoute>
           } />
         </Route>
       </Routes>

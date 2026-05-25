@@ -35,7 +35,7 @@ export default function DashboardUID() {
     const { role } = useAuthStore()
 
     useEffect(() => { 
-        document.title = role === 'up3' ? "Dashboard UP3 | METRIK" : "Dashboard UID | METRIK" 
+        document.title = role === 'super_admin' ? "Dashboard Nasional | METRIK" : role === 'up3' ? "Dashboard UP3 | METRIK" : "Dashboard UID | METRIK" 
     }, [role])
 
     const [selectedBulan, setSelectedBulan] = useState('')
@@ -93,10 +93,10 @@ export default function DashboardUID() {
             <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px', margin: 0 }}>
-                        {role === 'up3' ? 'Dashboard UP3' : 'Dashboard Unit Induk Distribusi'}
+                        {role === 'super_admin' ? 'Dashboard Nasional PLN' : role === 'up3' ? 'Dashboard UP3' : 'Dashboard Unit Induk Distribusi'}
                     </h1>
                     <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-                        {role === 'up3' ? 'Pantauan performa verifikasi seluruh ULP di bawah UP3' : 'Pantauan performa verifikasi seluruh UP3 dan ULP'}
+                        {role === 'super_admin' ? 'Pantauan performa verifikasi seluruh UID se-Indonesia' : role === 'up3' ? 'Pantauan performa verifikasi seluruh ULP di bawah UP3' : 'Pantauan performa verifikasi seluruh UP3 dan ULP'}
                     </p>
                 </div>
                 <div>
@@ -127,7 +127,7 @@ export default function DashboardUID() {
                 {/* UP3/ULP Leaderboard */}
                 <div className="card-hover" style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>
-                        {role === 'up3' ? 'Peringkat Kinerja ULP' : 'Peringkat Kinerja UP3'}
+                        {role === 'super_admin' ? 'Peringkat Kinerja UID' : role === 'up3' ? 'Peringkat Kinerja ULP' : 'Peringkat Kinerja UP3'}
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 20 }}>Berdasarkan persentase penyelesaian</div>
                     
@@ -138,7 +138,7 @@ export default function DashboardUID() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <div style={{ fontSize: 11, fontWeight: 700, color: index === 0 ? '#10b981' : '#94a3b8', background: index === 0 ? '#ecfdf5' : '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>#{index + 1}</div>
                                         <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
-                                            {unit.nama_unit || (role === 'up3' ? `ULP ${unit.kode_unit}` : `UP3 ${unit.kode_unit}`)}
+                                            {unit.nama_unit || (role === 'super_admin' ? `UID ${unit.kode_unit}` : role === 'up3' ? `ULP ${unit.kode_unit}` : `UP3 ${unit.kode_unit}`)}
                                         </div>
                                     </div>
                                     <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{unit.progress_pct}%</div>
@@ -154,7 +154,7 @@ export default function DashboardUID() {
                         ))}
                         {(!uidData?.leaderboard || uidData.leaderboard.length === 0) && (
                             <div style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', padding: '20px 0' }}>
-                                Belum ada data {role === 'up3' ? 'ULP' : 'UP3'}.
+                                Belum ada data {role === 'super_admin' ? 'UID' : role === 'up3' ? 'ULP' : 'UP3'}.
                             </div>
                         )}
                     </div>

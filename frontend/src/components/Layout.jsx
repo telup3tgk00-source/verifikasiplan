@@ -13,6 +13,7 @@ const navItems = [
     { to: '/assignment', label: 'Pembagian Tugas',                menu: 'pembagian' },
     { to: '/progress',   label: 'Progres Operator',              menu: 'progres' },
     { to: '/export',     label: 'Export Excel',                   menu: 'export' },
+    { to: '/audit',      label: 'Audit Trail',                    menu: 'audit' },
     { to: '/users',      label: 'Pengaturan',                     menu: 'settings' },
 ]
 
