@@ -1,7 +1,7 @@
 import multiprocessing
 
-# Bind ke localhost port 8000 (Nginx akan meneruskannya ke sini)
-bind = "127.0.0.1:8000"
+# Bind ke 0.0.0.0 port 8000 (Wajib 0.0.0.0 agar bisa diakses antar container Docker)
+bind = "0.0.0.0:8000"
 
 # Rumus Optimal KVM 2 Hostinger (2 vCPU x 2 + 1) = 5 Workers
 workers = 5
