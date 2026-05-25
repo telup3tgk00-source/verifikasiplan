@@ -39,7 +39,14 @@ export default function Layout() {
         setDialog({
             title: 'Keluar',
             message: 'Apakah Anda yakin ingin keluar dari aplikasi?',
-            onConfirm: () => {
+            onConfirm: async () => {
+                try {
+                    // Import api secara dinamis untuk menghindari circular dependency
+                    const api = (await import('../api/axios')).default
+                    await api.post('/api/auth/logout')
+                } catch (e) {
+                    console.error("Gagal logout di backend:", e)
+                }
                 queryClient.clear() // Bersihkan semua cache React Query agar data user lama hilang
                 logout()
                 navigate('/login')

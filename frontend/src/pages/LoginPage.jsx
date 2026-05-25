@@ -22,11 +22,17 @@ export default function LoginPage() {
         setLoading(true)
         try {
             const res = await api.post('/api/auth/login', { username, password })
-            setAuth(res.data.access_token, res.data.role, res.data.full_name, res.data.kode_unit)
+            setAuth(res.data.role, res.data.full_name, res.data.kode_unit)
             toast.success(`Selamat datang, ${res.data.full_name}!`)
             navigate('/')
-        } catch {
-            toast.error('Username atau password salah!')
+        } catch (err) {
+            if (err.response && err.response.status === 429) {
+                toast.error('Terlalu banyak percobaan! Anda diblokir sementara, coba lagi nanti.')
+            } else if (err.response && err.response.data && err.response.data.detail) {
+                toast.error(err.response.data.detail)
+            } else {
+                toast.error('Username atau password salah!')
+            }
         } finally {
             setLoading(false)
         }

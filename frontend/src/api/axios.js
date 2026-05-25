@@ -3,13 +3,11 @@ import { useAuthStore } from '../store/authStore'
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8000',
+    withCredentials: true // JWT akan dikirim via HTTP-Only cookie secara otomatis
 })
 
-api.interceptors.request.use((config) => {
-    const token = useAuthStore.getState().token
-    if (token) config.headers.Authorization = `Bearer ${token}`
-    return config
-})
+// Interceptor request sudah tidak diperlukan karena token lewat cookie
+
 
 // Deduplikasi toast "server tidak terhubung" — 1x per 10 detik
 // Mencegah spam notif saat banyak request gagal bersamaan (network blip)

@@ -4,17 +4,15 @@ import { persist } from 'zustand/middleware'
 export const useAuthStore = create(
     persist(
         (set) => ({
-            token: null,
             role: null,
             user: null,
             kode_unit: null,
-            setAuth: (token, role, full_name, kode_unit) => set({
-                token,
+            setAuth: (role, full_name, kode_unit) => set({
                 role,
                 kode_unit: kode_unit || null,
                 user: { full_name }
             }),
-            logout: () => set({ token: null, role: null, user: null, kode_unit: null }),
+            logout: () => set({ role: null, user: null, kode_unit: null }),
         }),
         { name: 'auth-storage' }
     )

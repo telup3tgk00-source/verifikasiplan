@@ -12,8 +12,8 @@ import UsersPage from './pages/UsersPage'
 import AuditPage from './pages/AuditPage'
 
 function ProtectedRoute({ children, menu }) {
-  const { token, role } = useAuthStore()
-  if (!token) return <Navigate to="/login" replace />
+  const { role } = useAuthStore()
+  if (!role) return <Navigate to="/login" replace />
   if (menu && !canAccess(role, menu)) return <Navigate to="/" replace />
   return children
 }

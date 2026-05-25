@@ -116,6 +116,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Konfigurasi Rate Limiting (Brute Force Protection)
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.limiter import limiter
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Daftarkan semua router
 app.include_router(auth.router,          prefix="/api/auth",          tags=["auth"])
 app.include_router(users.router,         prefix="/api/users",         tags=["Users"])

@@ -17,16 +17,26 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = os.getenv("SECRET_KEY", "pln-kwh-secret-key-ganti-di-production")
 ALGORITHM = "HS256"
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+from fastapi import Request, Response
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
+def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=401,
         detail="Token tidak valid",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    # Prioritaskan token dari cookie (HTTP-Only)
+    cookie_token = request.cookies.get("access_token")
+    final_token = cookie_token or token
+
+    if not final_token:
+        raise credentials_exception
+
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(final_token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
@@ -42,18 +52,38 @@ def create_token(data: dict, expires_hours: int = 8):
     expire = datetime.utcnow() + timedelta(hours=expires_hours)
     return jwt.encode({**data, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
 
+from fastapi import Request
+from app.limiter import limiter
+
 @router.post("/login", response_model=TokenResponse)
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, response: Response, req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter_by(username=req.username, is_active=True).first()
     if not user or not pwd_context.verify(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Username atau password salah")
+    
     token = create_token({"sub": str(user.id), "role": user.role.value})
+    
+    # Set HTTP-Only Cookie
+    response.set_cookie(
+        key="access_token", 
+        value=token, 
+        httponly=True, 
+        max_age=8 * 3600, 
+        samesite="lax"
+    )
+    
     return TokenResponse(
-        access_token=token,
+        access_token="", # Kosongkan karena sudah di cookie
         role=user.role.value,
         full_name=user.full_name,
         kode_unit=user.kode_unit
     )
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie("access_token")
+    return {"message": "Berhasil logout"}
 
 @router.post("/init-admin")
 def init_admin(db: Session = Depends(get_db)):
