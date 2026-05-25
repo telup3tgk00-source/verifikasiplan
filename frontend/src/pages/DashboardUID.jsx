@@ -5,6 +5,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
     PieChart, Pie, Cell, Legend, BarChart, Bar 
 } from 'recharts'
+import { useAuthStore } from '../store/authStore'
 
 function StatCard({ label, value, color, subtext, trend }) {
     return (
@@ -31,7 +32,11 @@ function StatCard({ label, value, color, subtext, trend }) {
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 export default function DashboardUID() {
-    useEffect(() => { document.title = "Dashboard UID | METRIK" }, [])
+    const { role } = useAuthStore()
+
+    useEffect(() => { 
+        document.title = role === 'up3' ? "Dashboard UP3 | METRIK" : "Dashboard UID | METRIK" 
+    }, [role])
 
     const [selectedBulan, setSelectedBulan] = useState('')
 
@@ -87,8 +92,12 @@ export default function DashboardUID() {
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
             <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px', margin: 0 }}>Dashboard Unit Induk Distribusi</h1>
-                    <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Pantauan performa verifikasi seluruh UP3 dan ULP</p>
+                    <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px', margin: 0 }}>
+                        {role === 'up3' ? 'Dashboard UP3' : 'Dashboard Unit Induk Distribusi'}
+                    </h1>
+                    <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+                        {role === 'up3' ? 'Pantauan performa verifikasi seluruh ULP di bawah UP3' : 'Pantauan performa verifikasi seluruh UP3 dan ULP'}
+                    </p>
                 </div>
                 <div>
                     <select
@@ -115,32 +124,38 @@ export default function DashboardUID() {
             {/* Middle Section: Leaderboard & Trend */}
             <div className="animate-slide-up delay-100" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20, marginBottom: 24 }}>
                 
-                {/* UP3 Leaderboard */}
+                {/* UP3/ULP Leaderboard */}
                 <div className="card-hover" style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Peringkat Kinerja UP3</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>
+                        {role === 'up3' ? 'Peringkat Kinerja ULP' : 'Peringkat Kinerja UP3'}
+                    </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 20 }}>Berdasarkan persentase penyelesaian</div>
                     
                     <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        {uidData?.leaderboard?.map((up3, index) => (
-                            <div key={up3.kode_up3}>
+                        {uidData?.leaderboard?.map((unit, index) => (
+                            <div key={unit.kode_unit}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <div style={{ fontSize: 11, fontWeight: 700, color: index === 0 ? '#10b981' : '#94a3b8', background: index === 0 ? '#ecfdf5' : '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>#{index + 1}</div>
-                                        <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>{up3.nama_up3 || `UP3 ${up3.kode_up3}`}</div>
+                                        <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+                                            {unit.nama_unit || (role === 'up3' ? `ULP ${unit.kode_unit}` : `UP3 ${unit.kode_unit}`)}
+                                        </div>
                                     </div>
-                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{up3.progress_pct}%</div>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{unit.progress_pct}%</div>
                                 </div>
                                 <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                                    <div style={{ width: `${up3.progress_pct}%`, height: '100%', background: up3.progress_pct > 80 ? '#10b981' : up3.progress_pct > 40 ? '#3b82f6' : '#f59e0b', borderRadius: 3, transition: 'width 1s ease-in-out' }} />
+                                    <div style={{ width: `${unit.progress_pct}%`, height: '100%', background: unit.progress_pct > 80 ? '#10b981' : unit.progress_pct > 40 ? '#3b82f6' : '#f59e0b', borderRadius: 3, transition: 'width 1s ease-in-out' }} />
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 11, color: '#94a3b8' }}>
-                                    <span>Selesai: {up3.done.toLocaleString()}</span>
-                                    <span>Sisa: {(up3.total - up3.done).toLocaleString()}</span>
+                                    <span>Selesai: {unit.done.toLocaleString()}</span>
+                                    <span>Sisa: {(unit.total - unit.done).toLocaleString()}</span>
                                 </div>
                             </div>
                         ))}
                         {(!uidData?.leaderboard || uidData.leaderboard.length === 0) && (
-                            <div style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', padding: '20px 0' }}>Belum ada data UP3.</div>
+                            <div style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', padding: '20px 0' }}>
+                                Belum ada data {role === 'up3' ? 'ULP' : 'UP3'}.
+                            </div>
                         )}
                     </div>
                 </div>

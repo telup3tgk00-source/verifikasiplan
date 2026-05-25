@@ -259,26 +259,27 @@ def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_us
     from app.models import VerificationRecord, StatusEnum, UploadSession, User as DBUser, RoleEnum
     from datetime import datetime, timedelta
 
-    if current_user.role not in [RoleEnum.uid, RoleEnum.super_admin]:
-        raise HTTPException(status_code=403, detail="Hanya untuk role UID atau Super Admin")
+    if current_user.role not in [RoleEnum.uid, RoleEnum.super_admin, RoleEnum.up3]:
+        raise HTTPException(status_code=403, detail="Hanya untuk role UID, Super Admin, atau UP3")
 
     db = SessionLocal()
     try:
-        # 1. UP3 Leaderboard
-        up3_query = db.query(DBUser).filter(DBUser.role == RoleEnum.up3)
-        if current_user.kode_unit and current_user.role == RoleEnum.uid:
-            up3_query = up3_query.filter(DBUser.kode_unit.like(f"{current_user.kode_unit}%"))
-        up3_list = up3_query.all()
+        # 1. Leaderboard (UP3 untuk UID, ULP untuk UP3)
+        target_role = RoleEnum.up3 if current_user.role in [RoleEnum.uid, RoleEnum.super_admin] else RoleEnum.ulp
+        sub_query = db.query(DBUser).filter(DBUser.role == target_role)
+        if current_user.kode_unit:
+            sub_query = sub_query.filter(DBUser.kode_unit.like(f"{current_user.kode_unit}%"))
+        sub_list = sub_query.all()
         
         leaderboard = []
-        for up3 in up3_list:
+        for sub in sub_list:
             q = db.query(
                 func.count(VerificationRecord.id).label('total'),
                 func.sum(case((VerificationRecord.status != StatusEnum.PENDING, 1), else_=0)).label('done'),
                 func.sum(case((VerificationRecord.is_anomaly == True, 1), else_=0)).label('anomaly')
             ).filter(
                 VerificationRecord.is_deleted == False,
-                VerificationRecord.kode_unit.like(f"{up3.kode_unit}%")
+                VerificationRecord.kode_unit.like(f"{sub.kode_unit}%")
             )
             
             if bulan:
@@ -290,8 +291,8 @@ def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_us
             done = stats.done or 0
             
             leaderboard.append({
-                "kode_up3": up3.kode_unit,
-                "nama_up3": up3.full_name,
+                "kode_unit": sub.kode_unit,
+                "nama_unit": sub.full_name,
                 "total": total,
                 "done": done,
                 "anomaly": stats.anomaly or 0,

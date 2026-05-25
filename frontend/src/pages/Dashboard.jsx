@@ -21,7 +21,7 @@ function StatCard({ label, value, color, subtext }) {
 export default function Dashboard() {
     const { role } = useAuthStore()
 
-    if (role === 'uid') {
+    if (['uid', 'super_admin', 'up3'].includes(role)) {
         return <DashboardUID />
     }
 
