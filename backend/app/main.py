@@ -56,6 +56,18 @@ def run_migrations():
             except Exception:
                 pass
 
+        # ── Indexing Migration ────────────────────────────────────────
+        for idx_sql in [
+            "CREATE INDEX IF NOT EXISTS ix_verification_records_status ON verification_records (status)",
+            "CREATE INDEX IF NOT EXISTS ix_verification_records_assigned_to ON verification_records (assigned_to)",
+            "CREATE INDEX IF NOT EXISTS ix_verification_records_is_anomaly ON verification_records (is_anomaly)",
+            "CREATE INDEX IF NOT EXISTS ix_verification_records_is_deleted ON verification_records (is_deleted)"
+        ]:
+            try:
+                db.execute(text(idx_sql))
+            except Exception:
+                pass
+
         # ── PostgreSQL: upgrade RoleEnum type dengan nilai baru ───────
         # Tambahkan nilai enum baru jika belum ada (PostgreSQL specific)
         from app.database import engine as _engine
@@ -123,9 +135,28 @@ def root():
 from fastapi import Depends
 from app.routers.auth import get_current_user
 from app.models import User
+import time
+
+DASHBOARD_CACHE = {}
+CACHE_TTL = 30  # detik
+
+def get_cache(key: str):
+    if key in DASHBOARD_CACHE:
+        data, timestamp = DASHBOARD_CACHE[key]
+        if time.time() - timestamp < CACHE_TTL:
+            return data
+    return None
+
+def set_cache(key: str, data):
+    DASHBOARD_CACHE[key] = (data, time.time())
 
 @app.get("/api/dashboard/stats")
 def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_user)):
+    cache_key = f"stats_{current_user.id}_{bulan}"
+    cached = get_cache(cache_key)
+    if cached:
+        return cached
+
     from app.database import SessionLocal
     db = SessionLocal()
     try:
@@ -192,17 +223,24 @@ def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_
                 "pct": round(s_done / s_total * 100, 1) if s_total > 0 else 0
             })
 
-        return {
+        result = {
             "total": total, "pending": pending, "verified_ok": ok,
             "verified_reject": reject, "need_investigation": inv, 
             "anomaly": anomaly, "progress_pct": pct,
             "chart_data": chart_data[::-1] # Reverse to chronological
         }
+        set_cache(cache_key, result)
+        return result
     finally:
         db.close()
 
 @app.get("/api/dashboard/progress-ulp")
 def progress_ulp(bulan: str = None, current_user: User = Depends(get_current_user)):
+    cache_key = f"ulp_{current_user.id}_{bulan}"
+    cached = get_cache(cache_key)
+    if cached:
+        return cached
+
     from app.database import SessionLocal
     from sqlalchemy import func, case
     from app.models import VerificationRecord, StatusEnum, UploadSession, User as DBUser, RoleEnum
@@ -248,12 +286,19 @@ def progress_ulp(bulan: str = None, current_user: User = Depends(get_current_use
             })
             
         # Urutkan berdasarkan unit
-        return sorted(result, key=lambda x: str(x['kode_unit']))
+        final_result = sorted(result, key=lambda x: str(x['kode_unit']))
+        set_cache(cache_key, final_result)
+        return final_result
     finally:
         db.close()
 
 @app.get("/api/dashboard/uid")
 def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_user)):
+    cache_key = f"uid_{current_user.id}_{bulan}"
+    cached = get_cache(cache_key)
+    if cached:
+        return cached
+
     from fastapi import HTTPException
     from app.database import SessionLocal
     from sqlalchemy import func, case
@@ -385,11 +430,13 @@ def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_us
         
         bottlenecks = sorted(bottleneck_list, key=lambda x: x['pending_count'], reverse=True)[:5]
 
-        return {
+        final_result = {
             "leaderboard": leaderboard,
             "daily_trend": daily_trend,
             "anomaly_breakdown": anomaly_breakdown,
             "bottlenecks": bottlenecks
         }
+        set_cache(cache_key, final_result)
+        return final_result
     finally:
         db.close()
