@@ -15,3 +15,6 @@ keepalive = 5
 accesslog = "-"
 errorlog = "-"
 loglevel = "info"
+
+# Proxy configuration (wajib agar Rate Limiter bisa baca IP asli klien, bukan IP Nginx)
+forwarded_allow_ips = "*"
