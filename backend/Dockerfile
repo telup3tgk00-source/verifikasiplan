@@ -1,6 +1,10 @@
+# Gunakan Python versi ringan
 FROM python:3.12-slim
 
 WORKDIR /app
+
+# Install dependencies sistem (untuk PostgreSQL dan compiling)
+RUN apt-get update && apt-get install -y gcc libpq-dev && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 COPY requirements.txt .
@@ -12,5 +16,5 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Run uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run gunicorn (menggunakan konfigurasi KVM 2 yang kita buat)
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app.main:app"]

@@ -83,14 +83,29 @@ def update_record(record_id: int, req: RecordUpdate, db: Session = Depends(get_d
     # Trigger Notifikasi ke Admin/Supervisor jika ada penolakan atau investigasi
     if req.status in [StatusEnum.VERIFIED_REJECT, StatusEnum.NEED_INVESTIGATION]:
         from app.models import User, RoleEnum, Notification
-        from app.permissions import ADMIN_ROLES
+        
+        # 1. Format status agar bahasa manusia
+        status_label = "Perlu Investigasi" if req.status == StatusEnum.NEED_INVESTIGATION else "Ditolak"
+        
+        # 2. Format catatan (hanya tampil jika tidak kosong)
+        catatan_text = f" Catatan: {req.catatan}" if req.catatan and str(req.catatan).strip() else ""
+        
         supervisors = db.query(User).filter(User.role.in_([RoleEnum.super_admin, RoleEnum.uid, RoleEnum.up3, RoleEnum.ulp])).all()
+        
         for sup in supervisors:
-            db.add(Notification(
-                user_id=sup.id,
-                title="Perhatian: Penolakan Data",
-                message=f"Verifikator {current_user.full_name} menandai ID {record.id_pelanggan} sebagai {req.status.value}. Catatan: {req.catatan}"
-            ))
+            # 3. Filter Scope: Kirim hanya ke super_admin ATAU atasan yang wilayahnya menaungi record ini
+            is_in_scope = False
+            if sup.role == RoleEnum.super_admin:
+                is_in_scope = True
+            elif sup.kode_unit and record.kode_unit and record.kode_unit.startswith(sup.kode_unit):
+                is_in_scope = True
+                
+            if is_in_scope:
+                db.add(Notification(
+                    user_id=sup.id,
+                    title=f"Data {status_label}",
+                    message=f"Verifikator {current_user.full_name} menandai ID {record.id_pelanggan} sebagai {status_label}.{catatan_text}"
+                ))
         db.commit()
 
     return record
