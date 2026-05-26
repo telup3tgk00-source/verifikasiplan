@@ -72,6 +72,14 @@ export default function ExportPage() {
 
     return (
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+            {loading && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.8)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(3px)' }}>
+                    <div style={{ width: 40, height: 40, border: '4px solid #cbd5e1', borderTopColor: '#0f172a', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    <div style={{ marginTop: 20, fontSize: 16, fontWeight: 600, color: '#0f172a' }}>Sedang Menggabungkan & Mengunduh Excel...</div>
+                    <div style={{ marginTop: 8, fontSize: 13, color: '#64748b', maxWidth: 400, textAlign: 'center', lineHeight: 1.5 }}>Data yang besar mungkin memakan waktu hingga beberapa menit. Mohon JANGAN tutup atau pindah halaman ini.</div>
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </div>
+            )}
             <div style={{ marginBottom: 24 }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.4px', margin: 0 }}>Export Excel</h1>
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Download hasil verifikasi: gabungan data Match + Beda dalam format .xlsx</p>
