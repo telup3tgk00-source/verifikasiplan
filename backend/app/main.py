@@ -369,7 +369,7 @@ def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_us
             VerificationRecord.status != StatusEnum.PENDING,
             VerificationRecord.verified_at >= seven_days_ago
         )
-        if current_user.kode_unit and current_user.role == RoleEnum.uid:
+        if current_user.kode_unit and current_user.role != RoleEnum.super_admin:
             trend_query = trend_query.filter(VerificationRecord.kode_unit.like(f"{current_user.kode_unit}%"))
         if bulan:
             trend_query = trend_query.join(UploadSession).filter(UploadSession.bulan_verifikasi == bulan)
@@ -398,7 +398,7 @@ def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_us
             VerificationRecord.is_anomaly == True,
             VerificationRecord.status != StatusEnum.PENDING
         )
-        if current_user.kode_unit and current_user.role == RoleEnum.uid:
+        if current_user.kode_unit and current_user.role != RoleEnum.super_admin:
             anomaly_q = anomaly_q.filter(VerificationRecord.kode_unit.like(f"{current_user.kode_unit}%"))
         if bulan:
             anomaly_q = anomaly_q.join(UploadSession).filter(UploadSession.bulan_verifikasi == bulan)
@@ -418,7 +418,7 @@ def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_us
          .filter(VerificationRecord.is_deleted == False)\
          .group_by(UploadSession.id)
          
-        if current_user.kode_unit and current_user.role == RoleEnum.uid:
+        if current_user.kode_unit and current_user.role != RoleEnum.super_admin:
             bottleneck_q = bottleneck_q.filter(VerificationRecord.kode_unit.like(f"{current_user.kode_unit}%"))
         if bulan:
             bottleneck_q = bottleneck_q.filter(UploadSession.bulan_verifikasi == bulan)
