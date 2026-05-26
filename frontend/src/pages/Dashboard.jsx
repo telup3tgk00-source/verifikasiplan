@@ -112,7 +112,7 @@ export default function Dashboard() {
                                 <Tooltip
                                     contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: 13, padding: '12px 16px', fontWeight: 500 }}
                                     cursor={{ fill: '#f1f5f9' }}
-                                    formatter={(val) => [`${val}%`, 'Selesai']}
+                                    formatter={(val, name, props) => [`${val}% (${props.payload.done?.toLocaleString() || 0} dari ${props.payload.total?.toLocaleString() || 0})`, 'Selesai']}
                                 />
                                 <Bar dataKey="pct" radius={[6, 6, 0, 0]}>
                                     {stats?.chart_data?.map((entry, index) => (
