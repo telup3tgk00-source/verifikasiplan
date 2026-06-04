@@ -25,7 +25,7 @@ def run_migrations():
             try:
                 db.execute(text(col_sql))
             except Exception:
-                pass
+                db.rollback()
 
         # ── upload_sessions columns ───────────────────────────────────
         for col_sql in [
@@ -38,13 +38,13 @@ def run_migrations():
             try:
                 db.execute(text(col_sql))
             except Exception:
-                pass
+                db.rollback()
 
         # ── reason_options columns ────────────────────────────────────
         try:
             db.execute(text("ALTER TABLE reason_options ADD COLUMN requires_stand_correction BOOLEAN DEFAULT false"))
         except Exception:
-            pass
+            db.rollback()
 
         # ── users columns (kode_unit & parent_id) ─────────────────────
         for col_sql in [
@@ -54,7 +54,7 @@ def run_migrations():
             try:
                 db.execute(text(col_sql))
             except Exception:
-                pass
+                db.rollback()
 
         # ── Indexing Migration ────────────────────────────────────────
         for idx_sql in [
@@ -66,7 +66,7 @@ def run_migrations():
             try:
                 db.execute(text(idx_sql))
             except Exception:
-                pass
+                db.rollback()
 
         # ── PostgreSQL: upgrade RoleEnum type dengan nilai baru ───────
         # Tambahkan nilai enum baru jika belum ada (PostgreSQL specific)
@@ -76,12 +76,12 @@ def run_migrations():
                 try:
                     db.execute(text(f"ALTER TYPE roleenum ADD VALUE IF NOT EXISTS '{new_val}'"))
                 except Exception:
-                    pass
+                    db.rollback()
             # Update akun admin lama ke super_admin
             try:
                 db.execute(text("UPDATE users SET role = 'super_admin' WHERE role IN ('admin')"))
             except Exception:
-                pass
+                db.rollback()
 
         db.commit()
     finally:

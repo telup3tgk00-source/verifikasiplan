@@ -3,8 +3,8 @@ import multiprocessing
 # Bind ke 0.0.0.0 port 8000 (Wajib 0.0.0.0 agar bisa diakses antar container Docker)
 bind = "0.0.0.0:8000"
 
-# Rumus Optimal KVM 2 Hostinger (2 vCPU x 2 + 1) = 5 Workers
-workers = 5
+# Rumus aman untuk load Pandas besar di RAM 8GB
+workers = 3
 worker_class = "uvicorn.workers.UvicornWorker"
 
 # Mencegah Timeout saat proses upload Excel besar
