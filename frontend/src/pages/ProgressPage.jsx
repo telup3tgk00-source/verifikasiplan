@@ -69,7 +69,7 @@ export default function ProgressPage() {
     }, [ulpProgress, isUID]);
 
     const getUp3Name = (code) => {
-        const map = { '171': 'TANJUNG KARANG', '172': 'METRO', '173': 'KOTABUMI' };
+        const map = { '171': 'TANJUNG KARANG', '172': 'METRO', '173': 'KOTABUMI', '174': 'PRINGSEWU' };
         return map[code] || code;
     };
 
