@@ -885,7 +885,7 @@ export default function VerifikasiPage() {
                                                         onMouseEnter={e => !isReadOnly && (e.currentTarget.style.background = '#e2e8f0')}
                                                         onMouseLeave={e => !isReadOnly && (e.currentTarget.style.background = '#f8fafc')}
                                                     >
-                                                        Ambil Biller
+                                                        Stan Biller
                                                     </button>
                                                 </div>
                                                 <input

@@ -136,7 +136,7 @@ export default function Layout() {
                     </div>
                     <footer style={{ padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 12, textAlign: 'center', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>&copy; {new Date().getFullYear()} METRIK PT PLN (Persero) UP3 Tanjung Karang &mdash; Sistem Verifikasi KWH Meter. All rights reserved.</span>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>Versi 1.1.0</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>Versi 1.2.0</span>
                     </footer>
                 </div>
             </div>
