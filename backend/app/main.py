@@ -328,8 +328,9 @@ def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_us
             target_role = RoleEnum.ulp
             
         sub_query = db.query(DBUser).filter(DBUser.role == target_role)
-        if current_user.kode_unit:
-            sub_query = sub_query.filter(DBUser.kode_unit.like(f"{current_user.kode_unit}%"))
+        if current_user.role != RoleEnum.super_admin:
+            user_kode = current_user.kode_unit if current_user.kode_unit else '17'
+            sub_query = sub_query.filter(DBUser.kode_unit.like(f"{user_kode}%"))
         sub_list = sub_query.all()
         
         leaderboard = []

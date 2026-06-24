@@ -30,9 +30,8 @@ class ReasonOut(BaseModel):
 def get_reasons(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     q = db.query(ReasonOption)
     if current_user.role != RoleEnum.super_admin:
-        uid_code = current_user.kode_unit[:2] if current_user.kode_unit else None
-        if uid_code:
-            q = q.filter(ReasonOption.uid_code == uid_code)
+        uid_code = current_user.kode_unit[:2] if current_user.kode_unit else '17'
+        q = q.filter(ReasonOption.uid_code == uid_code)
     
     return q.order_by(ReasonOption.sort_order).all()
 
@@ -41,7 +40,7 @@ def create_reason(req: ReasonCreate, db: Session = Depends(get_db), current_user
     if current_user.role not in CAN_MANAGE_REASONS:
         raise HTTPException(status_code=403, detail="Hanya UID dan Super Admin yang dapat menambah alasan")
         
-    uid_code = current_user.kode_unit[:2] if current_user.kode_unit else None
+    uid_code = current_user.kode_unit[:2] if current_user.kode_unit else '17'
     
     query_existing = db.query(ReasonOption).filter_by(value=req.value)
     if uid_code:
@@ -108,7 +107,7 @@ def update_reason(reason_id: int, req: ReasonCreate, db: Session = Depends(get_d
     if not reason:
         raise HTTPException(status_code=404, detail="Alasan tidak ditemukan")
         
-    uid_code = current_user.kode_unit[:2] if current_user.kode_unit else None
+    uid_code = current_user.kode_unit[:2] if current_user.kode_unit else '17'
     if current_user.role != RoleEnum.super_admin and reason.uid_code != uid_code:
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke alasan ini")
 
@@ -149,7 +148,7 @@ def delete_reason(reason_id: int, db: Session = Depends(get_db), current_user: U
     if not reason:
         raise HTTPException(status_code=404, detail="Alasan tidak ditemukan")
         
-    uid_code = current_user.kode_unit[:2] if current_user.kode_unit else None
+    uid_code = current_user.kode_unit[:2] if current_user.kode_unit else '17'
     if current_user.role != RoleEnum.super_admin and reason.uid_code != uid_code:
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke alasan ini")
         
