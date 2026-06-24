@@ -1,8 +1,12 @@
 import sys
 import os
 
-# Tambahkan backend ke path supaya bisa import app
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "backend")))
+# Deteksi lokasi: apakah dijalankan dari root (ada folder 'backend') atau dari dalam docker/backend
+base_dir = os.path.dirname(os.path.abspath(__file__))
+if os.path.exists(os.path.join(base_dir, "backend", "app")):
+    sys.path.insert(0, os.path.join(base_dir, "backend"))
+else:
+    sys.path.insert(0, base_dir)
 
 try:
     from app.database import engine
