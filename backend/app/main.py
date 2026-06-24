@@ -274,8 +274,9 @@ def progress_ulp(bulan: str = None, current_user: User = Depends(get_current_use
         
         result = []
         for row in grouped:
-            ulp_user = db.query(DBUser).filter(DBUser.role == RoleEnum.ulp, DBUser.kode_unit == row.kode_unit).first()
-            ulp_name = ulp_user.full_name if ulp_user else f"Unit {row.kode_unit or 'N/A'}"
+            # Cek ULP, kalau gak ada cek UP3 (untuk kasus 2 layer)
+            user_unit = db.query(DBUser).filter(DBUser.kode_unit == row.kode_unit, DBUser.role.in_([RoleEnum.ulp, RoleEnum.up3])).first()
+            ulp_name = user_unit.full_name if user_unit else f"Unit {row.kode_unit or 'N/A'}"
             
             total = row.total
             ok = row.ok or 0

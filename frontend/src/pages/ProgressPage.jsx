@@ -47,7 +47,16 @@ export default function ProgressPage() {
         const groups = {};
         ulpProgress.forEach(row => {
             if (!row || !row.kode_unit) return;
-            const up3 = String(row.kode_unit).substring(0, 3);
+            
+            let up3 = "";
+            const kodeStr = String(row.kode_unit);
+            if (kodeStr.includes('-')) {
+                const parts = kodeStr.split('-');
+                up3 = parts.length >= 2 ? `${parts[0]}-${parts[1]}` : parts[0];
+            } else {
+                up3 = kodeStr.substring(0, 3);
+            }
+
             if (!groups[up3]) {
                 groups[up3] = {
                     up3_code: up3,

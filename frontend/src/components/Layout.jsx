@@ -85,8 +85,8 @@ export default function Layout() {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                         <img src={logoImg} alt="Logo" style={{ height: 80, width: 'auto', objectFit: 'contain', display: 'block', marginBottom: 8 }} />
                         <div style={{ fontSize: 18, fontWeight: 'bold', color: '#ffffff', letterSpacing: '1px', marginBottom: 4 }}>METRIK</div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', textTransform: 'uppercase', textAlign: 'center', fontWeight: 500 }}>Sistem Verifikasi Meter KWH</div>
-                        <div style={{ fontSize: 9, color: 'rgba(96,165,250,0.8)', letterSpacing: '1px', marginTop: 8, fontWeight: 700, padding: '2px 6px', background: 'rgba(59,130,246,0.1)', borderRadius: 4, border: '1px solid rgba(59,130,246,0.2)' }}>v1.1.0</div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', textTransform: 'uppercase', textAlign: 'center', fontWeight: 500 }}>Sistem Verifikasi KWH Meter</div>
+                        <div style={{ fontSize: 9, color: 'rgba(96,165,250,0.8)', letterSpacing: '1px', marginTop: 8, fontWeight: 700, padding: '2px 6px', background: 'rgba(59,130,246,0.1)', borderRadius: 4, border: '1px solid rgba(59,130,246,0.2)' }}>v1.2.0</div>
                     </div>
                 </div>
 

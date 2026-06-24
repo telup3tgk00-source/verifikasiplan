@@ -47,7 +47,8 @@ def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int, kode_
     col_merek      = find_col(df, ["Merek", "merek", "MEREK", "Merk"])
     col_tipe       = find_col(df, ["Tipe Stan", "tipe_stan", "TIPE STAN", "Tipe"])
     col_nama_bil   = find_col(df, ["Nama Biller", "nama_biller", "NAMA BILLER"])
-    col_unit       = find_col(df, ["Unit", "unit", "UNIT"])
+    col_unit       = find_col(df, ["UNITUP", "Unit UP", "Unitup", "Unit", "unit", "UNIT"])
+    col_unitap     = find_col(df, ["UNITAP", "Unit AP", "Unitap"])
     col_kode_nama_bil = find_col(df, ["Kode Nama Biller", "kode_nama_biller", "KODE NAMA BILLER"])
     col_lbkb          = find_col(df, ["LBKB", "lbkb"])
 
@@ -73,13 +74,31 @@ def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int, kode_
             tipe      = str(row[col_tipe]).strip()     if col_tipe     and pd.notna(row[col_tipe])     else None
             nama_bil  = str(row[col_nama_bil]).strip() if col_nama_bil and pd.notna(row[col_nama_bil]) else None
             unit      = str(row[col_unit]).strip()     if col_unit     and pd.notna(row[col_unit])     else None
+            unitap    = str(row[col_unitap]).strip()   if col_unitap   and pd.notna(row[col_unitap])   else None
             kode_nama_biller = str(row[col_kode_nama_bil]).strip() if col_kode_nama_bil and pd.notna(row[col_kode_nama_bil]) else None
             lbkb      = str(row[col_lbkb]).strip()     if col_lbkb     and pd.notna(row[col_lbkb])     else None
+
+            # LOGIKA PENENTUAN KODE UNIT (MENDUKUNG FORMAT ANGKA & FORMAT HIERARKI BEDA HURUF)
+            final_kode_unit = unit if unit else kode_unit
+            
+            # Jika excel punya UNITAP, pakai UNITAP. Jika tidak, otomatis warisi kode uploader (kode_unit)
+            bapak_kode = unitap if unitap else kode_unit
+            
+            if bapak_kode and unit:
+                # Jika unit (misal: 53701) tidak diawali oleh bapak_kode (misal: 53-53CKG)
+                if not str(unit).startswith(str(bapak_kode)):
+                    # Jika berasal dari UNITAP Excel (contoh 53CKG), rakit dari nol (UID-UP3-ULP)
+                    if unitap:
+                        uid = str(unitap)[:2] if len(str(unitap)) >= 2 else str(unitap)
+                        final_kode_unit = f"{uid}-{unitap}-{unit}"
+                    # Jika mewarisi dari akun peng-upload (contoh 53-53CKG), langsung sambung
+                    else:
+                        final_kode_unit = f"{bapak_kode}-{unit}"
 
             rec = VerificationRecord(
                 session_id=session_id,
                 id_pelanggan=id_pel,
-                unit=unit,
+                unit=unit, # unit asli (misal 53701) tetap disimpan untuk display di tabel
                 kode_nama_biller=kode_nama_biller,
                 record_type=record_type,
                 stand_ai=stand_ai,
@@ -89,11 +108,9 @@ def parse_excel_file(file_bytes: bytes, record_type: str, session_id: int, kode_
                 merek_petugas=nama_bil,
                 tipe_ai=tipe,
                 lbkb=lbkb,
-                # Data MATCH langsung VERIFIED_OK; BEDA = PENDING
                 status=StatusEnum.VERIFIED_OK if record_type == "match" else StatusEnum.PENDING,
                 is_anomaly=(selisih or 0) > ANOMALY_THRESHOLD,
-                # Gunakan unit dari excel (misal: 17100) agar ULP bisa melihat. Fallback ke kode_unit uploader.
-                kode_unit=unit if unit else kode_unit
+                kode_unit=final_kode_unit
             )
             records.append(rec)
         except Exception:

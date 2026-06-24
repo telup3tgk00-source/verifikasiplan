@@ -231,14 +231,19 @@ export default function UsersPage() {
                                 ))}
                             </select>
                         </div>
-                        {['uid','up3','ulp'].includes(form.role) && (
+                        {['uid','up3','ulp','verifikator'].includes(form.role) && (
                             <div>
-                                <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Kode Unit {myKodeUnit ? `(awali dengan ${myKodeUnit})` : ''}</label>
+                                <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 5, fontWeight: 500 }}>Kode Unit</label>
                                 <input
-                                    type="text" value={form.kode_unit} placeholder={`cth: ${myKodeUnit || '17'}1`}
+                                    type="text" value={form.kode_unit} placeholder="Masukkan kode unit..."
                                     onChange={e => setForm(f => ({ ...f, kode_unit: e.target.value }))}
                                     style={inputStyle}
                                 />
+                                <div style={{ fontSize: 10, color: '#64748b', marginTop: 4, fontStyle: 'italic', lineHeight: 1.4 }}>
+                                    {form.role === 'uid' && 'Panduan: Masukkan murni kode provinsi. Contoh: 17 atau 53'}
+                                    {form.role === 'up3' && 'Panduan: Wajib gabungkan UID dan UP3 dengan tanda strip (-). Contoh: 17-17171 atau 53-53CKG'}
+                                    {(form.role === 'ulp' || form.role === 'verifikator') && 'Panduan: Wajib buat rantai penuh (UID-UP3-ULP). Contoh: 17-17171-17110 atau 53-53CKG-53701'}
+                                </div>
                             </div>
                         )}
                         <div>
@@ -252,11 +257,17 @@ export default function UsersPage() {
                     </div>
                     <button
                         onClick={() => createUser.mutate(form)}
-                        disabled={createUser.isPending || !form.username || !form.password || !form.full_name}
+                        disabled={
+                            createUser.isPending || 
+                            !form.username || 
+                            !form.password || 
+                            !form.full_name || 
+                            (['uid', 'up3', 'ulp', 'verifikator'].includes(form.role) && !form.kode_unit.trim())
+                        }
                         style={{
                             background: '#0f172a', color: '#fff', border: 'none', borderRadius: 7,
                             padding: '9px 20px', cursor: 'pointer', fontWeight: 600, fontSize: 12,
-                            opacity: (createUser.isPending || !form.username || !form.password) ? 0.5 : 1
+                            opacity: (createUser.isPending || !form.username || !form.password || !form.full_name || (['uid', 'up3', 'ulp', 'verifikator'].includes(form.role) && !form.kode_unit.trim())) ? 0.5 : 1
                         }}>
                         {createUser.isPending ? 'Menyimpan...' : 'Simpan'}
                     </button>

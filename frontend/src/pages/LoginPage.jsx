@@ -45,7 +45,7 @@ export default function LoginPage() {
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
                     <img src={logoImg} alt="Logo" style={{ height: 120, width: 'auto', objectFit: 'contain', display: 'block', margin: '0 auto 12px' }} />
                     <div style={{ fontSize: 28, fontWeight: 'bold', color: '#ffffff', letterSpacing: '1px', marginBottom: 4 }}>METRIK</div>
-                    <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', margin: 0, fontWeight: 500, letterSpacing: '0.5px' }}>Sistem Verifikasi Meter KWH</p>
+                    <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', margin: 0, fontWeight: 500, letterSpacing: '0.5px' }}>Sistem Verifikasi KWH Meter</p>
                 </div>
 
                 {/* Card */}

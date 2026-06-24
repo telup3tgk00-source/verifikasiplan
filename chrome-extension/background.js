@@ -11,8 +11,13 @@ chrome.alarms.onAlarm.addListener((alarm) => {
             if (!data.autoSyncEnabled) return; // Skip if toggle is off
 
             console.log("Mengirim Heartbeat ke portal ACMT untuk mencegah auto-logout...");
-            // Ping halaman ACMT untuk menjaga sesi tetap hidup
-            fetch("https://portalapp.iconpln.co.id/acmt/Main.htm", { method: "HEAD" })
+            // Ping halaman ACMT untuk menjaga sesi tetap hidup (tambahkan timestamp agar tidak di-cache browser)
+            let cacheBuster = "?_ts=" + new Date().getTime();
+            fetch("https://portalapp.iconpln.co.id/acmt/Main.htm" + cacheBuster, { 
+                method: "HEAD", 
+                credentials: "include", // WAJIB agar cookie JSESSIONID ikut terkirim ke server
+                cache: "no-store"       // WAJIB agar browser tidak memakai cache
+            })
                 .then(res => {
                     console.log("Heartbeat sukses, status:", res.status);
                     chrome.cookies.getAll({ domain: "portalapp.iconpln.co.id" }, (cookies) => {

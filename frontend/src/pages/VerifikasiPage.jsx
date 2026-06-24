@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../api/axios'
 import { toast } from 'sonner'
@@ -18,6 +18,124 @@ function getBlthList() {
         list.push(`${y}${m}`)
     }
     return list
+}
+
+function ZoomableImage({ src, style, onClick, allowZoom = true }) {
+    const [magnifierActive, setMagnifierActive] = useState(false);
+    const [{ x, y, imgX, imgY, imgWidth, imgHeight }, setMagnifierState] = useState({ x: 0, y: 0, imgX: 0, imgY: 0, imgWidth: 0, imgHeight: 0 });
+    const divRef = useRef(null);
+    const imgRef = useRef(null);
+    
+    // Konfigurasi Kaca Pembesar
+    const MAGNIFIER_SIZE = 250; 
+    const ZOOM_LEVEL = 2.5;
+
+    const handleMouseMove = (e) => {
+        if (!allowZoom || !magnifierActive || !divRef.current || !imgRef.current) return;
+        
+        const divRect = divRef.current.getBoundingClientRect();
+        const img = imgRef.current;
+        const imgRect = img.getBoundingClientRect();
+        
+        if (!img.naturalWidth || !img.naturalHeight) return;
+
+        const naturalRatio = img.naturalWidth / img.naturalHeight;
+        const elementRatio = imgRect.width / imgRect.height;
+        
+        let renderedWidth = imgRect.width;
+        let renderedHeight = imgRect.height;
+        
+        if (naturalRatio > elementRatio) {
+            renderedHeight = imgRect.width / naturalRatio;
+        } else {
+            renderedWidth = imgRect.height * naturalRatio;
+        }
+        
+        const imgRectLeft = imgRect.left + (imgRect.width - renderedWidth) / 2;
+        const imgRectTop = imgRect.top + (imgRect.height - renderedHeight) / 2;
+
+        const clientX = e.clientX;
+        const clientY = e.clientY;
+        if (clientX === undefined) return;
+
+        const currentImgX = clientX - imgRectLeft;
+        const currentImgY = clientY - imgRectTop;
+
+        if (currentImgX < -5 || currentImgX > renderedWidth + 5 || currentImgY < -5 || currentImgY > renderedHeight + 5) {
+            return;
+        }
+
+        const x = clientX - divRect.left - (MAGNIFIER_SIZE / 2);
+        const y = clientY - divRect.top - (MAGNIFIER_SIZE / 2);
+
+        setMagnifierState({
+            x, y,
+            imgX: currentImgX,
+            imgY: currentImgY,
+            imgWidth: renderedWidth,
+            imgHeight: renderedHeight
+        });
+    };
+
+    const handleClick = (e) => {
+        if (allowZoom) {
+            e.stopPropagation();
+            const syntheticEvent = { clientX: e.clientX, clientY: e.clientY };
+            if (!magnifierActive) {
+                setMagnifierActive(true);
+                setTimeout(() => handleMouseMove(syntheticEvent), 0);
+            } else {
+                setMagnifierActive(false);
+            }
+        }
+        if (onClick) onClick(e);
+    };
+
+    return (
+        <div 
+            ref={divRef}
+            style={{ ...style, position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setMagnifierActive(false)}
+        >
+            <img 
+                ref={imgRef}
+                src={src} 
+                alt="Meter" 
+                onClick={handleClick}
+                style={{ 
+                    display: 'block',
+                    maxWidth: '100%', 
+                    maxHeight: '100%', 
+                    objectFit: 'contain',
+                    cursor: allowZoom ? (magnifierActive ? 'none' : 'zoom-in') : 'pointer'
+                }} 
+            />
+            {allowZoom && magnifierActive && (
+                <div
+                    onClick={handleClick} 
+                    style={{
+                        position: "absolute",
+                        cursor: 'none',
+                        width: `${MAGNIFIER_SIZE}px`,
+                        height: `${MAGNIFIER_SIZE}px`,
+                        left: `${x}px`,
+                        top: `${y}px`,
+                        border: "2px solid #eab308", 
+                        backgroundColor: "#fff",
+                        backgroundImage: `url('${src}')`,
+                        backgroundRepeat: "no-repeat",
+                        backgroundSize: `${imgWidth * ZOOM_LEVEL}px ${imgHeight * ZOOM_LEVEL}px`,
+                        backgroundPositionX: `${-imgX * ZOOM_LEVEL + MAGNIFIER_SIZE / 2}px`,
+                        backgroundPositionY: `${-imgY * ZOOM_LEVEL + MAGNIFIER_SIZE / 2}px`,
+                        boxShadow: "0 10px 25px rgba(0,0,0,0.6)",
+                        zIndex: 9999,
+                        borderRadius: 8
+                    }}
+                />
+            )}
+        </div>
+    );
 }
 
 function FotoModal({ foto, onClose }) {
@@ -46,8 +164,7 @@ function FotoModal({ foto, onClose }) {
                 </div>
                 {foto.loading && <div style={{ color: '#94a3b8', padding: 40, fontSize: 13 }}>Memuat foto...</div>}
                 {foto.error && <div style={{ color: '#f87171', padding: 20, fontSize: 12, textAlign: 'center' }}>{foto.error}</div>}
-                {foto.url && <img src={foto.url} alt="foto meter"
-                    style={{ maxWidth: '80vw', maxHeight: '75vh', borderRadius: 6, objectFit: 'contain' }} />}
+                {foto.url && <ZoomableImage src={foto.url} style={{ maxWidth: '80vw', maxHeight: '75vh', borderRadius: 6 }} allowZoom={true} />}
             </div>
         </div>
     )
@@ -83,16 +200,16 @@ function LatestPhoto({ idpel, blth }) {
         <>
             <div
                 onClick={() => fotoState.url && setShowFull(true)}
-                style={{ width: '100%', height: 400, background: '#0f172a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16, cursor: fotoState.url ? 'zoom-in' : 'default', position: 'relative' }}
-                title={fotoState.url ? "Klik untuk perbesar" : ""}
+                style={{ width: '100%', height: 400, background: '#0f172a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16, cursor: fotoState.url ? 'pointer' : 'default', position: 'relative' }}
+                title={fotoState.url ? "Klik untuk melihat layar penuh" : ""}
             >
                 {fotoState.loading && <div style={{ fontSize: 11, color: '#94a3b8' }}>Memuat foto terbaru...</div>}
                 {fotoState.error && <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center', padding: 10 }}>{fotoState.error}</div>}
                 {fotoState.url && (
                     <>
-                        <img src={fotoState.url} alt="Latest" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        <ZoomableImage src={fotoState.url} style={{ width: '100%', height: '100%' }} allowZoom={false} />
                         <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '4px 8px', borderRadius: 4, fontSize: 10, pointerEvents: 'none' }}>
-                            🔍 Perbesar
+                            🔍 Klik untuk Layar Penuh
                         </div>
                     </>
                 )}
@@ -298,6 +415,64 @@ function AcmtSessionPanel() {
     )
 }
 
+function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (ref.current && !ref.current.contains(event.target)) setOpen(false);
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    return (
+        <div ref={ref} style={{ position: 'relative' }}>
+            <div 
+                onClick={() => setOpen(!open)}
+                style={{ ...inputStyle, width: 160, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 11, color: selected.length ? '#0f172a' : '#64748b' }}>
+                    {selected.length === 0 ? placeholder : `${selected.length} LBKB Dipilih`}
+                </span>
+                <span style={{ fontSize: 9, color: '#94a3b8' }}>▼</span>
+            </div>
+            {open && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, width: 240, maxHeight: 300, overflowY: 'auto', zIndex: 50, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+                    <div style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', position: 'sticky', top: 0 }}>
+                        <label style={{ fontSize: 11, display: 'flex', gap: 8, cursor: 'pointer', fontWeight: 600, color: '#374151', alignItems: 'center' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={selected.length === options.length && options.length > 0} 
+                                onChange={(e) => onChange(e.target.checked ? [...options] : [])} 
+                                style={{ margin: 0, cursor: 'pointer' }}
+                            />
+                            Pilih Semua
+                        </label>
+                    </div>
+                    <div style={{ padding: '4px 0' }}>
+                        {options.map(opt => (
+                            <label key={opt} style={{ display: 'flex', gap: 8, padding: '6px 12px', fontSize: 11, cursor: 'pointer', color: '#475569', alignItems: 'center' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={selected.includes(opt)} 
+                                    onChange={(e) => {
+                                        if (e.target.checked) onChange([...selected, opt]);
+                                        else onChange(selected.filter(x => x !== opt));
+                                    }} 
+                                    style={{ margin: 0, cursor: 'pointer' }}
+                                />
+                                {opt}
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
 export default function VerifikasiPage() {
     useEffect(() => { document.title = "Verifikasi Data | METRIK" }, [])
 
@@ -308,8 +483,12 @@ export default function VerifikasiPage() {
         queryKey: ['reasons'],
         queryFn: () => api.get('/api/settings/reasons').then(r => r.data),
     })
+    const { data: lbkbOptions = [] } = useQuery({
+        queryKey: ['lbkb-options'],
+        queryFn: () => api.get('/api/records/lbkb-options').then(r => r.data.options),
+    })
     const [page, setPage] = useState(1)
-    const [filter, setFilter] = useState({ status: '', search: '', anomalyOnly: false, merekMismatch: false, sessionId: '', unit: '', reasonType: '' })
+    const [filter, setFilter] = useState({ status: '', search: '', anomalyOnly: false, merekMismatch: false, sessionId: '', unit: '', reasonType: '', lbkb: [], minSelisih: '', maxSelisih: '' })
     const [selected, setSelected] = useState(null)
     const [note, setNote] = useState('')
     const [reasonType, setReasonType] = useState('')
@@ -370,6 +549,9 @@ export default function VerifikasiPage() {
                 reason_type: filter.reasonType || undefined,
                 anomaly_only: filter.anomalyOnly,
                 merek_mismatch: filter.merekMismatch,
+                lbkb: filter.lbkb.length > 0 ? filter.lbkb.join(',') : undefined,
+                min_selisih: filter.minSelisih !== '' && !isNaN(filter.minSelisih) ? Number(filter.minSelisih) : undefined,
+                max_selisih: filter.maxSelisih !== '' && !isNaN(filter.maxSelisih) ? Number(filter.maxSelisih) : undefined,
                 assigned_to: role === 'verifikator' ? user?.id : undefined,
                 session_id: filter.sessionId || undefined
             }
@@ -483,6 +665,24 @@ export default function VerifikasiPage() {
                         <input type="checkbox" checked={filter.merekMismatch} onChange={e => setFilter(f => ({ ...f, merekMismatch: e.target.checked }))} style={{ accentColor: '#3b82f6' }} />
                         Merek Beda
                     </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f8fafc', padding: '2px 6px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>SELISIH:</span>
+                        <input
+                            type="number"
+                            placeholder="Min"
+                            value={filter.minSelisih}
+                            onChange={e => { setFilter(f => ({ ...f, minSelisih: e.target.value })); setPage(1) }}
+                            style={{ ...inputStyle, width: 55, height: 26, fontSize: 11, padding: '0 6px', border: '1px solid #cbd5e1', boxShadow: 'none' }}
+                        />
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>s/d</span>
+                        <input
+                            type="number"
+                            placeholder="Max"
+                            value={filter.maxSelisih}
+                            onChange={e => { setFilter(f => ({ ...f, maxSelisih: e.target.value })); setPage(1) }}
+                            style={{ ...inputStyle, width: 55, height: 26, fontSize: 11, padding: '0 6px', border: '1px solid #cbd5e1', boxShadow: 'none' }}
+                        />
+                    </div>
                     <input
                         placeholder="Cari ID Pelanggan..."
                         value={filter.search}
@@ -527,6 +727,12 @@ export default function VerifikasiPage() {
                             <option key={r.value} value={r.value}>{r.label}</option>
                         ))}
                     </select>
+                    <MultiSelectDropdown
+                        options={lbkbOptions}
+                        selected={filter.lbkb}
+                        onChange={vals => { setFilter(f => ({ ...f, lbkb: vals })); setPage(1); }}
+                        placeholder="Semua LBKB"
+                    />
                 </div>
             </div>
 
@@ -661,9 +867,27 @@ export default function VerifikasiPage() {
                                         {/* Stand koreksi (muncul jika alasan mengizinkan) */}
                                         {allowKoreksi && (
                                             <div style={{ marginBottom: 14 }}>
-                                                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
-                                                    Stand Koreksi (KWH)
-                                                </label>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block' }}>
+                                                        Stand Koreksi (KWH)
+                                                    </label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setCorrectedStand(selected.stand_petugas != null ? String(selected.stand_petugas) : '')}
+                                                        disabled={isReadOnly || selected.stand_petugas == null}
+                                                        style={{ 
+                                                            fontSize: 10, padding: '2px 8px', borderRadius: 4, border: '1px solid #cbd5e1', 
+                                                            background: '#f8fafc', color: '#475569', fontWeight: 600,
+                                                            cursor: (isReadOnly || selected.stand_petugas == null) ? 'not-allowed' : 'pointer',
+                                                            display: 'flex', alignItems: 'center', gap: 4, opacity: (isReadOnly || selected.stand_petugas == null) ? 0.5 : 1,
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={e => !isReadOnly && (e.currentTarget.style.background = '#e2e8f0')}
+                                                        onMouseLeave={e => !isReadOnly && (e.currentTarget.style.background = '#f8fafc')}
+                                                    >
+                                                        Ambil Biller
+                                                    </button>
+                                                </div>
                                                 <input
                                                     type="number"
                                                     value={correctedStand}

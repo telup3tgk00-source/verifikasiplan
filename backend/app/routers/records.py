@@ -24,6 +24,9 @@ def get_records(
     reason_type: Optional[str] = None,
     anomaly_only: bool = False,
     merek_mismatch: bool = False,
+    lbkb: Optional[str] = None,
+    min_selisih: Optional[int] = None,
+    max_selisih: Optional[int] = None,
     skip: int = 0,
     limit: int = 50
 ):
@@ -51,7 +54,25 @@ def get_records(
         q = q.filter(VerificationRecord.is_anomaly == True)
     if merek_mismatch:
         q = q.filter(VerificationRecord.merek_ai != VerificationRecord.merek_petugas)
+    if lbkb:
+        lbkb_list = [x.strip() for x in lbkb.split(",")]
+        q = q.filter(VerificationRecord.lbkb.in_(lbkb_list))
+    if min_selisih is not None:
+        q = q.filter(VerificationRecord.selisih >= min_selisih)
+    if max_selisih is not None:
+        q = q.filter(VerificationRecord.selisih <= max_selisih)
     return q.offset(skip).limit(limit).all()
+
+@router.get("/lbkb-options")
+def get_lbkb_options(db: Session = Depends(get_db)):
+    options = db.query(VerificationRecord.lbkb)\
+                .filter(
+                    VerificationRecord.lbkb.isnot(None), 
+                    VerificationRecord.lbkb != "",
+                    VerificationRecord.lbkb != "LBKB" # Abaikan jika ada header nyasar dari excel
+                )\
+                .distinct().all()
+    return {"options": sorted([opt[0] for opt in options])}
 
 @router.patch("/{record_id}", response_model=RecordOut)
 def update_record(record_id: int, req: RecordUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
