@@ -103,9 +103,8 @@ def _generate_xlsx_bytes(
     
     reasons_query = db.query(ReasonOption)
     if current_user.role != RoleEnum.super_admin:
-        uid_code = current_user.kode_unit[:2] if current_user.kode_unit else None
-        if uid_code:
-            reasons_query = reasons_query.filter(ReasonOption.uid_code == uid_code)
+        uid_code = current_user.kode_unit[:2] if current_user.kode_unit else '17'
+        reasons_query = reasons_query.filter(ReasonOption.uid_code == uid_code)
             
     reasons_map = {r.value: r.label for r in reasons_query.all()}
 
