@@ -422,7 +422,7 @@ export default function UsersPage() {
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                     <thead>
                                         <tr style={{ background: '#f8fafc' }}>
-                                            {['Urutan', 'Key Value', 'Label Teks', 'Bisa Koreksi', 'Status', ''].map(h => (
+                                            {['Urutan', 'UID', 'Key Value', 'Label Teks', 'Bisa Koreksi', 'Status', ''].map(h => (
                                                 <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                                             ))}
                                         </tr>
@@ -431,6 +431,7 @@ export default function UsersPage() {
                                         {reasons.map(r => (
                                             <tr key={r.id} style={{ borderTop: '1px solid #f1f5f9' }}>
                                                 <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a', width: 60, textAlign: 'center' }}>{r.sort_order}</td>
+                                                <td style={{ padding: '12px 16px', color: '#3b82f6', fontWeight: 600, fontSize: 11 }}>{r.uid_code || 'Semua'}</td>
                                                 <td style={{ padding: '12px 16px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{r.value}</td>
                                                 <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a' }}>{r.label}</td>
                                                 <td style={{ padding: '12px 16px', fontSize: 12, fontWeight: 600, color: r.requires_stand_correction ? '#16a34a' : '#ef4444' }}>{r.requires_stand_correction ? 'Ya' : 'Tidak'}</td>

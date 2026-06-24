@@ -20,11 +20,12 @@ class StatusEnum(str, enum.Enum):
 class ReasonOption(Base):
     __tablename__ = "reason_options"
     id                       = Column(Integer, primary_key=True, index=True)
-    value                    = Column(String(100), unique=True, index=True)
+    value                    = Column(String(100), index=True)  # Tidak unique secara global lagi
     label                    = Column(String(200))
     is_active                = Column(Boolean, default=True)
     sort_order               = Column(Integer, default=0)
     requires_stand_correction = Column(Boolean, default=False)
+    uid_code                 = Column(String(10), nullable=True, index=True)  # Penanda kepemilikan provinsi (contoh: '17', '53')
 
 class User(Base):
     __tablename__ = "users"

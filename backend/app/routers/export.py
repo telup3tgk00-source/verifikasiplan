@@ -97,10 +97,17 @@ def _generate_xlsx_bytes(
     to keep RAM usage low even for 300k+ records.
     Returns a BytesIO buffer ready for streaming.
     """
-    from app.models import User, ReasonOption
+    from app.models import User, ReasonOption, RoleEnum
 
     users = {u.id: u.full_name for u in db.query(User).all()}
-    reasons_map = {r.value: r.label for r in db.query(ReasonOption).all()}
+    
+    reasons_query = db.query(ReasonOption)
+    if current_user.role != RoleEnum.super_admin:
+        uid_code = current_user.kode_unit[:2] if current_user.kode_unit else None
+        if uid_code:
+            reasons_query = reasons_query.filter(ReasonOption.uid_code == uid_code)
+            
+    reasons_map = {r.value: r.label for r in reasons_query.all()}
 
     q = _build_query(db, session_id, filter_status, record_type, operator_id, current_user, bulan)
 
