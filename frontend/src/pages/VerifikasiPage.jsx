@@ -260,7 +260,6 @@ const COOKIE_FIELDS = [
 ]
 
 function AcmtSessionPanel() {
-    const [status, setStatus] = useState(null)
     const [showForm, setShowForm] = useState(false)
     const [showGuide, setShowGuide] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -268,14 +267,14 @@ function AcmtSessionPanel() {
         JSESSIONID: '', Pool_ACMTJava: '', TS017170f7: '', TS01be508d: ''
     })
 
-    const loadStatus = async () => {
-        try {
+    const { data: status = null, refetch: loadStatus } = useQuery({
+        queryKey: ['acmt-session-status'],
+        queryFn: async () => {
             const r = await api.get('/api/foto/session/status')
-            setStatus(r.data)
-        } catch { setStatus(null) }
-    }
-
-    useEffect(() => { loadStatus() }, [])
+            return r.data
+        },
+        refetchInterval: 5000 // Polling setiap 5 detik agar otomatis hijau saat ekstensi sync
+    })
 
     const handleSave = async () => {
         if (!fields.JSESSIONID.trim()) {
