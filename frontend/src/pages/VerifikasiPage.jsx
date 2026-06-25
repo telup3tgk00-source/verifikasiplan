@@ -297,9 +297,10 @@ function AcmtSessionPanel() {
         finally { setSaving(false) }
     }
 
-    const hasSession = status?.has_session
-    const setAt = status?.set_at ? new Date(status.set_at).toLocaleString('id-ID') : null
-    const cookieKeys = status?.cookie_keys || []
+    const hasLocalCookie = document.cookie.includes('metrik_acmt_session')
+    const hasSession = status?.has_session || hasLocalCookie
+    const setAt = status?.set_at ? new Date(status.set_at).toLocaleString('id-ID') : (hasLocalCookie ? 'Otomatis' : null)
+    const cookieKeys = hasLocalCookie ? ['Mode Lokal (Ekstensi)'] : (status?.cookie_keys || [])
 
     return (
         <div style={{
@@ -314,9 +315,9 @@ function AcmtSessionPanel() {
                     fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
                     color: hasSession ? '#15803d' : '#dc2626', letterSpacing: '0.5px'
                 }}>
-                    {hasSession ? '● Sesi ACMT Aktif' : '○ Sesi ACMT Belum Diset'}
+                    {hasLocalCookie ? '● Sesi ACMT Aktif (Lokal)' : (hasSession ? '● Sesi ACMT Aktif (Global)' : '○ Sesi ACMT Belum Diset')}
                 </span>
-                {setAt && <span style={{ fontSize: 11, color: '#64748b' }}>diset {setAt} oleh {status.set_by}</span>}
+                {setAt && <span style={{ fontSize: 11, color: '#64748b' }}>diset {setAt} oleh {hasLocalCookie ? 'Browser Anda' : status?.set_by}</span>}
                 {cookieKeys.length > 0 && (
                     <span style={{
                         fontSize: 10, color: '#64748b', background: '#f1f5f9',
