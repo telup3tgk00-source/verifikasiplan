@@ -60,12 +60,32 @@ def get_session_status() -> dict:
 
 async def fetch_photo(idpel: str, blth: str, fotoke: str, client_cookie: str = None) -> tuple[bytes, str]:
     """
-    Ambil foto meter dari ACMT PLN.
-    Forward SEMUA cookie yang disimpan ke ICONPLN.
+    Ambil foto meter dari ACMT PLN atau R2 Backup.
     """
+    print(f"[FOTO] idpel={idpel} blth={blth} fotoke={fotoke}")
+
+    # ========================================================
+    # BYPASS UNTUK BULAN 7 (202607) - AMBIL DARI R2 CLOUDFLARE
+    # ========================================================
+    if blth == "202607":
+        if fotoke != "1":
+            raise RuntimeError("Backup Lampung hanya memiliki 1 foto utama per IDPEL")
+            
+        r2_url = f"https://pub-da52918545424c74a6ab1ec35249a14e.r2.dev/{idpel}.jpg"
+        print(f"[FOTO] BYPASS ACMT -> Ambil dari R2: {r2_url}")
+        
+        async with httpx.AsyncClient(timeout=15.0) as r2_client:
+            r2_resp = await r2_client.get(r2_url)
+            
+            if r2_resp.status_code == 200:
+                return r2_resp.content, r2_resp.headers.get("content-type", "image/jpeg")
+            else:
+                raise RuntimeError(f"Foto idpel {idpel} tidak ditemukan di server R2 (Status: {r2_resp.status_code})")
+    # ========================================================
+
+    # --- LOGIKA NORMAL KE ACMT (UNTUK BULAN LAIN) ---
     cookie_string = client_cookie or _session_cache.get("cookie_string")
     
-    print(f"[FOTO] idpel={idpel} blth={blth} fotoke={fotoke}")
     if client_cookie:
         print("[FOTO] Menggunakan cookie personal dari browser client!")
     else:
