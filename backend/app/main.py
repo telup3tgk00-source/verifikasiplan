@@ -183,12 +183,33 @@ def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_
             query = query.join(UploadSession, VerificationRecord.session_id == UploadSession.id)\
                          .filter(UploadSession.bulan_verifikasi == bulan)
                          
-        total = query.count()
-        pending = query.filter(VerificationRecord.status == StatusEnum.PENDING).count()
-        ok = query.filter(VerificationRecord.status == StatusEnum.VERIFIED_OK).count()
-        reject = query.filter(VerificationRecord.status == StatusEnum.VERIFIED_REJECT).count()
-        inv = query.filter(VerificationRecord.status == StatusEnum.NEED_INVESTIGATION).count()
-        anomaly = query.filter(VerificationRecord.is_anomaly == True).count()
+        # Lakukan 1 query agregasi untuk menghemat waktu (daripada 6 query .count() terpisah)
+        from sqlalchemy import func, case
+        agg_query = db.query(
+            func.count(VerificationRecord.id).label('total'),
+            func.sum(case((VerificationRecord.status == StatusEnum.PENDING, 1), else_=0)).label('pending'),
+            func.sum(case((VerificationRecord.status == StatusEnum.VERIFIED_OK, 1), else_=0)).label('ok'),
+            func.sum(case((VerificationRecord.status == StatusEnum.VERIFIED_REJECT, 1), else_=0)).label('reject'),
+            func.sum(case((VerificationRecord.status == StatusEnum.NEED_INVESTIGATION, 1), else_=0)).label('inv'),
+            func.sum(case((VerificationRecord.is_anomaly == True, 1), else_=0)).label('anomaly')
+        )
+        
+        # Apply the exact same filters to the aggregation query
+        agg_query = agg_query.filter(VerificationRecord.is_deleted == False)
+        agg_query = apply_scope_filter(agg_query, VerificationRecord, current_user)
+        if current_user.role == RoleEnum.verifikator:
+            agg_query = agg_query.filter(VerificationRecord.assigned_to == current_user.id)
+        if bulan:
+            agg_query = agg_query.join(UploadSession, VerificationRecord.session_id == UploadSession.id)\
+                                 .filter(UploadSession.bulan_verifikasi == bulan)
+        
+        agg_res = agg_query.first()
+        total = agg_res.total or 0
+        pending = agg_res.pending or 0
+        ok = agg_res.ok or 0
+        reject = agg_res.reject or 0
+        inv = agg_res.inv or 0
+        anomaly = agg_res.anomaly or 0
         
         pct = round((ok + reject + inv) / total * 100, 1) if total > 0 else 0
         
@@ -333,31 +354,44 @@ def dashboard_uid(bulan: str = None, current_user: User = Depends(get_current_us
             sub_query = sub_query.filter(DBUser.kode_unit.like(f"{user_kode}%"))
         sub_list = sub_query.all()
         
+        # Lakukan 1 query GROUP BY untuk seluruh unit, lalu agregasi di Python
+        agg_q = db.query(
+            VerificationRecord.kode_unit,
+            func.count(VerificationRecord.id).label('total'),
+            func.sum(case((VerificationRecord.status != StatusEnum.PENDING, 1), else_=0)).label('done'),
+            func.sum(case((VerificationRecord.is_anomaly == True, 1), else_=0)).label('anomaly')
+        ).filter(VerificationRecord.is_deleted == False)
+        
+        if current_user.role != RoleEnum.super_admin:
+            user_kode = current_user.kode_unit if current_user.kode_unit else '17'
+            agg_q = agg_q.filter(VerificationRecord.kode_unit.like(f"{user_kode}%"))
+            
+        if bulan:
+            agg_q = agg_q.join(UploadSession, VerificationRecord.session_id == UploadSession.id)\
+                         .filter(UploadSession.bulan_verifikasi == bulan)
+                         
+        agg_q = agg_q.group_by(VerificationRecord.kode_unit)
+        all_unit_stats = agg_q.all()
+        
         leaderboard = []
         for sub in sub_list:
-            q = db.query(
-                func.count(VerificationRecord.id).label('total'),
-                func.sum(case((VerificationRecord.status != StatusEnum.PENDING, 1), else_=0)).label('done'),
-                func.sum(case((VerificationRecord.is_anomaly == True, 1), else_=0)).label('anomaly')
-            ).filter(
-                VerificationRecord.is_deleted == False,
-                VerificationRecord.kode_unit.like(f"{sub.kode_unit}%")
-            )
+            total = 0
+            done = 0
+            anomaly = 0
             
-            if bulan:
-                q = q.join(UploadSession, VerificationRecord.session_id == UploadSession.id)\
-                     .filter(UploadSession.bulan_verifikasi == bulan)
-                     
-            stats = q.first()
-            total = stats.total or 0
-            done = stats.done or 0
+            # Hitung dari memori Python yang prefix-nya cocok
+            for st in all_unit_stats:
+                if st.kode_unit and st.kode_unit.startswith(sub.kode_unit):
+                    total += (st.total or 0)
+                    done += (st.done or 0)
+                    anomaly += (st.anomaly or 0)
             
             leaderboard.append({
                 "kode_unit": sub.kode_unit,
                 "nama_unit": sub.full_name,
                 "total": total,
                 "done": done,
-                "anomaly": stats.anomaly or 0,
+                "anomaly": anomaly,
                 "progress_pct": round((done / total * 100), 1) if total > 0 else 0
             })
             
