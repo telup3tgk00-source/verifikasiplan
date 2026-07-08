@@ -304,10 +304,11 @@ def background_delete_session(session_id: int):
             if res.rowcount == 0:
                 break
 
-        # 4. Terakhir hapus sesi
-        session = db.query(UploadSession).filter_by(id=session_id).first()
-        if session:
-            db.delete(session)
+        # 4. Terakhir hapus sesi menggunakan raw SQL agar tidak men-trigger ORM cascades yang menyebabkan UPDATE session_id=NULL (deadlock)
+        db.execute(
+            text("DELETE FROM upload_sessions WHERE id = :sid"),
+            {"sid": session_id}
+        )
         db.commit()
     except Exception as e:
         db.rollback()
@@ -326,6 +327,9 @@ def delete_session(session_id: int, background_tasks: BackgroundTasks, db: Sessi
     session = q.first()
     if not session:
         raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+        
+    if session.status == "deleting":
+        return {"message": "Sesi sedang dalam proses penghapusan di latar belakang"}
     
     session.status = "deleting"
     db.commit()
