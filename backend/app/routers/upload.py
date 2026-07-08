@@ -328,9 +328,6 @@ def delete_session(session_id: int, background_tasks: BackgroundTasks, db: Sessi
     if not session:
         raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
         
-    if session.status == "deleting":
-        return {"message": "Sesi sedang dalam proses penghapusan di latar belakang"}
-    
     session.status = "deleting"
     db.commit()
     
