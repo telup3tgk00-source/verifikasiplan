@@ -5,9 +5,14 @@ from app.models import VerificationRecord, AuditLog, StatusEnum, User
 from app.schemas import RecordOut, RecordUpdate
 from typing import List, Optional
 from datetime import datetime
+import time
 
 from app.routers.auth import get_current_user
 from app.permissions import apply_scope_filter
+
+# Cache untuk lbkb-options (jarang berubah, full-scan sangat mahal di 1.6M rows)
+_LBKB_CACHE = {"data": None, "ts": 0}
+_LBKB_TTL = 300  # 5 menit
 
 router = APIRouter()
 
@@ -65,6 +70,11 @@ def get_records(
 
 @router.get("/lbkb-options")
 def get_lbkb_options(db: Session = Depends(get_db)):
+    # Gunakan cache agar tidak full-scan setiap saat
+    now = time.time()
+    if _LBKB_CACHE["data"] is not None and (now - _LBKB_CACHE["ts"]) < _LBKB_TTL:
+        return _LBKB_CACHE["data"]
+    
     options = db.query(VerificationRecord.lbkb)\
                 .filter(
                     VerificationRecord.lbkb.isnot(None), 
@@ -72,7 +82,10 @@ def get_lbkb_options(db: Session = Depends(get_db)):
                     VerificationRecord.lbkb != "LBKB" # Abaikan jika ada header nyasar dari excel
                 )\
                 .distinct().all()
-    return {"options": sorted([opt[0] for opt in options])}
+    result = {"options": sorted([opt[0] for opt in options])}
+    _LBKB_CACHE["data"] = result
+    _LBKB_CACHE["ts"] = now
+    return result
 
 @router.patch("/{record_id}", response_model=RecordOut)
 def update_record(record_id: int, req: RecordUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):

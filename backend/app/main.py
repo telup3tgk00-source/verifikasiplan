@@ -12,15 +12,23 @@ from app.database import engine, Base, SessionLocal
 Base.metadata.create_all(bind=engine)
 
 # SQLite/PostgreSQL migration helper for new columns
+# Guard flag: hanya jalankan sekali per proses (cegah double-run di multi-threaded gunicorn)
+_migrations_done = False
+
 def run_migrations():
+    global _migrations_done
+    if _migrations_done:
+        return
+    _migrations_done = True
+    
     db = SessionLocal()
     try:
         # ── verification_records columns ──────────────────────────────
         for col_sql in [
-            "ALTER TABLE verification_records ADD COLUMN record_type VARCHAR(10) DEFAULT 'beda'",
-            "ALTER TABLE verification_records ADD COLUMN reason_type VARCHAR(50)",
-            "ALTER TABLE verification_records ADD COLUMN corrected_stand FLOAT",
-            "ALTER TABLE verification_records ADD COLUMN kode_unit VARCHAR(20)",
+            "ALTER TABLE verification_records ADD COLUMN IF NOT EXISTS record_type VARCHAR(10) DEFAULT 'beda'",
+            "ALTER TABLE verification_records ADD COLUMN IF NOT EXISTS reason_type VARCHAR(50)",
+            "ALTER TABLE verification_records ADD COLUMN IF NOT EXISTS corrected_stand FLOAT",
+            "ALTER TABLE verification_records ADD COLUMN IF NOT EXISTS kode_unit VARCHAR(20)",
         ]:
             try:
                 db.execute(text(col_sql))
@@ -29,11 +37,11 @@ def run_migrations():
 
         # ── upload_sessions columns ───────────────────────────────────
         for col_sql in [
-            "ALTER TABLE upload_sessions ADD COLUMN file_match_name VARCHAR(200)",
-            "ALTER TABLE upload_sessions ADD COLUMN file_beda_name VARCHAR(200)",
-            "ALTER TABLE upload_sessions ADD COLUMN total_match INTEGER DEFAULT 0",
-            "ALTER TABLE upload_sessions ADD COLUMN total_beda INTEGER DEFAULT 0",
-            "ALTER TABLE upload_sessions ADD COLUMN kode_unit VARCHAR(20)",
+            "ALTER TABLE upload_sessions ADD COLUMN IF NOT EXISTS file_match_name VARCHAR(200)",
+            "ALTER TABLE upload_sessions ADD COLUMN IF NOT EXISTS file_beda_name VARCHAR(200)",
+            "ALTER TABLE upload_sessions ADD COLUMN IF NOT EXISTS total_match INTEGER DEFAULT 0",
+            "ALTER TABLE upload_sessions ADD COLUMN IF NOT EXISTS total_beda INTEGER DEFAULT 0",
+            "ALTER TABLE upload_sessions ADD COLUMN IF NOT EXISTS kode_unit VARCHAR(20)",
         ]:
             try:
                 db.execute(text(col_sql))
@@ -42,14 +50,14 @@ def run_migrations():
 
         # ── reason_options columns ────────────────────────────────────
         try:
-            db.execute(text("ALTER TABLE reason_options ADD COLUMN requires_stand_correction BOOLEAN DEFAULT false"))
+            db.execute(text("ALTER TABLE reason_options ADD COLUMN IF NOT EXISTS requires_stand_correction BOOLEAN DEFAULT false"))
         except Exception:
             db.rollback()
 
         # ── users columns (kode_unit & parent_id) ─────────────────────
         for col_sql in [
-            "ALTER TABLE users ADD COLUMN kode_unit VARCHAR(20)",
-            "ALTER TABLE users ADD COLUMN parent_id INTEGER",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS kode_unit VARCHAR(20)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_id INTEGER",
         ]:
             try:
                 db.execute(text(col_sql))
@@ -69,7 +77,6 @@ def run_migrations():
                 db.rollback()
 
         # ── PostgreSQL: upgrade RoleEnum type dengan nilai baru ───────
-        # Tambahkan nilai enum baru jika belum ada (PostgreSQL specific)
         from app.database import engine as _engine
         if "postgresql" in str(_engine.url):
             for new_val in ["super_admin", "uid", "up3", "ulp"]:
@@ -77,11 +84,6 @@ def run_migrations():
                     db.execute(text(f"ALTER TYPE roleenum ADD VALUE IF NOT EXISTS '{new_val}'"))
                 except Exception:
                     db.rollback()
-            # Update akun admin lama ke super_admin
-            try:
-                db.execute(text("UPDATE users SET role = 'super_admin' WHERE role IN ('admin')"))
-            except Exception:
-                db.rollback()
 
         db.commit()
     finally:
@@ -146,7 +148,7 @@ from app.models import User
 import time
 
 DASHBOARD_CACHE = {}
-CACHE_TTL = 30  # detik
+CACHE_TTL = 120  # 2 menit — cukup lama untuk 1.6M rows, cukup segar untuk operasional
 
 def get_cache(key: str):
     if key in DASHBOARD_CACHE:
@@ -213,44 +215,45 @@ def dashboard_stats(bulan: str = None, current_user: User = Depends(get_current_
         
         pct = round((ok + reject + inv) / total * 100, 1) if total > 0 else 0
         
-        # Data untuk chart: Progres per sesi
+        # Data untuk chart: Progres per sesi — 1 query GROUP BY, bukan N×2 count()
+        from sqlalchemy import func, case as sa_case
         session_query = db.query(UploadSession)
         session_query = apply_scope_filter(session_query, UploadSession, current_user)
         if bulan:
             session_query = session_query.filter(UploadSession.bulan_verifikasi == bulan)
         sessions = session_query.order_by(UploadSession.id.desc()).limit(5).all()
+        session_ids = [s.id for s in sessions]
         
         chart_data = []
-        for s in sessions:
-            s_total_q = db.query(VerificationRecord).filter_by(session_id=s.id, is_deleted=False)
-            s_done_q = db.query(VerificationRecord).filter(
-                VerificationRecord.session_id == s.id,
-                VerificationRecord.status != StatusEnum.PENDING,
+        if session_ids:
+            # Single GROUP BY query untuk semua sesi sekaligus
+            chart_base = db.query(
+                VerificationRecord.session_id,
+                func.count(VerificationRecord.id).label('s_total'),
+                func.sum(sa_case((VerificationRecord.status != StatusEnum.PENDING, 1), else_=0)).label('s_done')
+            ).filter(
+                VerificationRecord.session_id.in_(session_ids),
                 VerificationRecord.is_deleted == False
             )
-            
-            s_total_q = apply_scope_filter(s_total_q, VerificationRecord, current_user)
-            s_done_q = apply_scope_filter(s_done_q, VerificationRecord, current_user)
-            
+            chart_base = apply_scope_filter(chart_base, VerificationRecord, current_user)
             if current_user.role == RoleEnum.verifikator:
-                s_total_q = s_total_q.filter(VerificationRecord.assigned_to == current_user.id)
-                s_done_q = s_done_q.filter(VerificationRecord.assigned_to == current_user.id)
-
-            s_total = s_total_q.count()
-            s_done = s_done_q.count()
+                chart_base = chart_base.filter(VerificationRecord.assigned_to == current_user.id)
+            chart_rows = {r.session_id: r for r in chart_base.group_by(VerificationRecord.session_id).all()}
             
-            # Jangan tampilkan sesi di chart jika verifikator tidak punya tugas di sesi tersebut
-            if current_user.role == RoleEnum.verifikator and s_total == 0:
-                continue
-
-            local_index = apply_scope_filter(db.query(UploadSession), UploadSession, current_user).filter(UploadSession.id <= s.id).count()
-
-            chart_data.append({
-                "name": f"Sesi {local_index}",
-                "done": s_done,
-                "total": s_total,
-                "pct": round(s_done / s_total * 100, 1) if s_total > 0 else 0
-            })
+            for i, s in enumerate(reversed(sessions)):
+                r = chart_rows.get(s.id)
+                if not r:
+                    continue
+                s_total = r.s_total or 0
+                s_done = r.s_done or 0
+                if current_user.role == RoleEnum.verifikator and s_total == 0:
+                    continue
+                chart_data.append({
+                    "name": f"Sesi {i+1}",
+                    "done": s_done,
+                    "total": s_total,
+                    "pct": round(s_done / s_total * 100, 1) if s_total > 0 else 0
+                })
 
         result = {
             "total": total, "pending": pending, "verified_ok": ok,
