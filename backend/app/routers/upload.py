@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
+from datetime import datetime
 from app.database import get_db
 from app.routers.auth import get_current_user
 from app.models import UploadSession, VerificationRecord, StatusEnum, User, RoleEnum
@@ -287,15 +288,33 @@ def background_delete_session(session_id: int):
         db.query(AssignmentBatch).filter_by(session_id=session_id).delete(synchronize_session=False)
         db.commit()
 
-        # 2. Hapus audit_logs yang terkait dengan record di sesi ini (Fix Foreign Key Violation)
-        db.execute(
-            text("DELETE FROM audit_logs WHERE record_id IN (SELECT id FROM verification_records WHERE session_id = :sid)"),
-            {"sid": session_id}
-        )
-        db.commit()
+        # 2. Hapus audit_logs yang terkait dengan record di sesi ini secara bertahap (Fix Foreign Key Violation)
+        print(f"[{datetime.now()}] [SESSION {session_id}] Menghapus audit_logs...")
+        total_audit_deleted = 0
+        while True:
+            print(f"[{datetime.now()}] [SESSION {session_id}] Menghapus chunk audit_logs... (Total terhapus sejauh ini: {total_audit_deleted})")
+            res = db.execute(
+                text("""
+                    DELETE FROM audit_logs 
+                    WHERE id IN (
+                        SELECT a.id FROM audit_logs a
+                        JOIN verification_records v ON a.record_id = v.id
+                        WHERE v.session_id = :sid
+                        LIMIT 10000
+                    )
+                """),
+                {"sid": session_id}
+            )
+            db.commit()
+            if res.rowcount == 0:
+                break
+            total_audit_deleted += res.rowcount
+        print(f"[{datetime.now()}] [SESSION {session_id}] audit_logs selesai dihapus. Total: {total_audit_deleted}")
 
         # 3. Hapus records secara bertahap (chunking via SQL) agar cepat dan tidak kena limit parameter Postgres
+        total_deleted = 0
         while True:
+            print(f"[{datetime.now()}] [SESSION {session_id}] Menghapus chunk records... (Total terhapus sejauh ini: {total_deleted})")
             res = db.execute(
                 text("DELETE FROM verification_records WHERE id IN (SELECT id FROM verification_records WHERE session_id = :sid LIMIT 10000)"),
                 {"sid": session_id}
@@ -303,13 +322,16 @@ def background_delete_session(session_id: int):
             db.commit()
             if res.rowcount == 0:
                 break
+            total_deleted += res.rowcount
 
         # 4. Terakhir hapus sesi menggunakan raw SQL agar tidak men-trigger ORM cascades yang menyebabkan UPDATE session_id=NULL (deadlock)
+        print(f"[{datetime.now()}] [SESSION {session_id}] Menghapus tabel utama upload_sessions...")
         db.execute(
             text("DELETE FROM upload_sessions WHERE id = :sid"),
             {"sid": session_id}
         )
         db.commit()
+        print(f"[{datetime.now()}] [SESSION {session_id}] SELESAI: Sesi berhasil dihapus secara keseluruhan.")
     except Exception as e:
         db.rollback()
         import traceback
