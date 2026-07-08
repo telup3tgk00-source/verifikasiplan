@@ -200,6 +200,7 @@ def get_sessions(db: Session = Depends(get_db), current_user: User = Depends(get
             prefixes = [current_user.kode_unit[:i] for i in range(1, len(current_user.kode_unit)+1)]
             q = q.filter(
                 or_(
+                    UploadSession.kode_unit.is_(None),  # Fallback untuk sesi lama yang belum punya kode_unit
                     UploadSession.kode_unit.like(f"{current_user.kode_unit}%"),
                     UploadSession.kode_unit.in_(prefixes)
                 )
@@ -227,7 +228,7 @@ def get_sessions(db: Session = Depends(get_db), current_user: User = Depends(get
                 VerificationRecord.is_deleted == False
             ).count()
             total_beda = total_records - total_match
-        elif current_user.kode_unit and s.kode_unit and len(current_user.kode_unit) > len(s.kode_unit):
+        elif current_user.kode_unit and (not s.kode_unit or len(current_user.kode_unit) > len(s.kode_unit)):
             total_records = db.query(VerificationRecord).filter(
                 VerificationRecord.session_id == s.id,
                 VerificationRecord.kode_unit.like(f"{current_user.kode_unit}%"),
@@ -241,6 +242,10 @@ def get_sessions(db: Session = Depends(get_db), current_user: User = Depends(get
             ).count()
             total_beda = total_records - total_match
             
+        # Jangan tampilkan sesi jika tidak ada record untuk user ini (kecuali Super Admin atau pembuat sesi murni kosong)
+        if total_records == 0 and current_user.role != RoleEnum.super_admin:
+            continue
+
         result.append({
             "id": s.id,
             "batch_name": s.batch_name,
