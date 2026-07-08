@@ -6,6 +6,7 @@ backend forward semua cookie ke ICONPLN.
 
 import logging
 import httpx
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -74,13 +75,22 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str, client_cookie: str = N
         r2_url = f"https://pub-da52918545424c74a6ab1ec35249a14e.r2.dev/{idpel}.jpg"
         print(f"[FOTO] BYPASS ACMT -> Ambil dari R2: {r2_url}")
         
-        async with httpx.AsyncClient(timeout=15.0) as r2_client:
-            r2_resp = await r2_client.get(r2_url)
-            
-            if r2_resp.status_code == 200:
-                return r2_resp.content, r2_resp.headers.get("content-type", "image/jpeg")
-            else:
-                raise RuntimeError(f"Foto idpel {idpel} tidak tersedia di server R2 Backup (Status: {r2_resp.status_code})")
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as r2_client:
+                    r2_resp = await r2_client.get(r2_url)
+                    
+                    if r2_resp.status_code == 200:
+                        return r2_resp.content, r2_resp.headers.get("content-type", "image/jpeg")
+                    else:
+                        raise RuntimeError(f"Foto idpel {idpel} tidak tersedia di server R2 Backup (Status: {r2_resp.status_code})")
+            except httpx.RequestError as e:
+                if attempt < max_retries - 1:
+                    print(f"[FOTO] Retry {attempt+1}/{max_retries} ke R2 untuk {idpel} karena error: {e}")
+                    await asyncio.sleep(1)
+                else:
+                    raise RuntimeError(f"Gagal mengambil foto dari R2 setelah {max_retries} percobaan: {e}")
     # ========================================================
 
     # --- LOGIKA NORMAL KE ACMT (UNTUK BULAN LAIN) ---
