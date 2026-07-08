@@ -80,7 +80,7 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str, client_cookie: str = N
             if r2_resp.status_code == 200:
                 return r2_resp.content, r2_resp.headers.get("content-type", "image/jpeg")
             else:
-                raise RuntimeError(f"Foto idpel {idpel} tidak ditemukan di server R2 (Status: {r2_resp.status_code})")
+                raise RuntimeError(f"Foto idpel {idpel} tidak tersedia di server R2 Backup (Status: {r2_resp.status_code})")
     # ========================================================
 
     # --- LOGIKA NORMAL KE ACMT (UNTUK BULAN LAIN) ---
