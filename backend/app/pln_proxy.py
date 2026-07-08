@@ -10,6 +10,23 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
+# Global instances untuk R2 agar TCP connection di-reuse (keep-alive)
+_r2_client = None
+_r2_semaphore = None
+
+def get_r2_client():
+    global _r2_client
+    if _r2_client is None:
+        limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
+        _r2_client = httpx.AsyncClient(timeout=15.0, limits=limits)
+    return _r2_client
+
+def get_r2_semaphore():
+    global _r2_semaphore
+    if _r2_semaphore is None:
+        _r2_semaphore = asyncio.Semaphore(10)  # Batasi 10 fetch konstan per worker
+    return _r2_semaphore
+
 ACMT_BASE_URL = "https://portalapp.iconpln.co.id/acmt"
 PHOTO_URL     = f"{ACMT_BASE_URL}/DisplayBlobServlet1"
 
@@ -76,21 +93,25 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str, client_cookie: str = N
         print(f"[FOTO] BYPASS ACMT -> Ambil dari R2: {r2_url}")
         
         max_retries = 3
+        r2_client = get_r2_client()
+        sem = get_r2_semaphore()
+        
         for attempt in range(max_retries):
             try:
-                async with httpx.AsyncClient(timeout=15.0) as r2_client:
+                async with sem:
                     r2_resp = await r2_client.get(r2_url)
                     
-                    if r2_resp.status_code == 200:
-                        return r2_resp.content, r2_resp.headers.get("content-type", "image/jpeg")
-                    else:
-                        raise RuntimeError(f"Foto idpel {idpel} tidak tersedia di server R2 Backup (Status: {r2_resp.status_code})")
+                if r2_resp.status_code == 200:
+                    return r2_resp.content, r2_resp.headers.get("content-type", "image/jpeg")
+                else:
+                    raise RuntimeError(f"Foto idpel {idpel} tidak tersedia di server R2 Backup (Status: {r2_resp.status_code})")
             except httpx.RequestError as e:
+                err_msg = str(e) or e.__class__.__name__
                 if attempt < max_retries - 1:
-                    print(f"[FOTO] Retry {attempt+1}/{max_retries} ke R2 untuk {idpel} karena error: {e}")
+                    print(f"[FOTO] Retry {attempt+1}/{max_retries} ke R2 untuk {idpel} karena error: {err_msg}")
                     await asyncio.sleep(1)
                 else:
-                    raise RuntimeError(f"Gagal mengambil foto dari R2 setelah {max_retries} percobaan: {e}")
+                    raise RuntimeError(f"Gagal mengambil foto dari R2 setelah {max_retries} percobaan: {err_msg}")
     # ========================================================
 
     # --- LOGIKA NORMAL KE ACMT (UNTUK BULAN LAIN) ---
