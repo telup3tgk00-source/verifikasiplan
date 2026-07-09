@@ -38,7 +38,15 @@ export default function DashboardUID() {
         document.title = role === 'super_admin' ? "Dashboard Nasional | METRIK" : role === 'up3' ? "Dashboard UP3 | METRIK" : "Dashboard UID | METRIK" 
     }, [role])
 
-    const [selectedBulan, setSelectedBulan] = useState('')
+    // Default ke bulan saat ini langsung — tanpa menunggu sessions API
+    // agar query pertama SELALU punya filter bulan (tidak scan 1.6M rows)
+    const getCurrentBulan = () => {
+        const now = new Date()
+        const y = now.getFullYear()
+        const m = String(now.getMonth() + 1).padStart(2, '0')
+        return `${y}${m}`
+    }
+    const [selectedBulan, setSelectedBulan] = useState(getCurrentBulan)
 
     const { data: sessions } = useQuery({
         queryKey: ['sessions'],
@@ -51,24 +59,29 @@ export default function DashboardUID() {
         return [...new Set(bln)].sort((a, b) => b.localeCompare(a)) 
     }, [sessions])
 
+    // Sinkronkan ke bulan terbaru dari data (jika bulan aktif tidak ada di sesi, pakai yang terbaru)
     useEffect(() => {
-        if (uniqueBulan.length > 0 && !selectedBulan) {
+        if (uniqueBulan.length > 0 && !uniqueBulan.includes(selectedBulan)) {
             setSelectedBulan(uniqueBulan[0])
         }
     }, [uniqueBulan])
 
-    // Top Level Stats (reusing existing stats endpoint)
+    // Top Level Stats
     const { data: stats, isLoading: isStatsLoading } = useQuery({
         queryKey: ['dashboard-stats', selectedBulan],
         queryFn: () => api.get(`/api/dashboard/stats${selectedBulan ? `?bulan=${selectedBulan}` : ''}`).then(r => r.data),
-        refetchInterval: 15000,
+        enabled: !!selectedBulan,   // Jangan fetch sebelum bulan dipilih
+        refetchInterval: 300000,    // 5 menit — backend sudah cache 2 menit, refresh terlalu sering buang-buang DB
+        staleTime: 60000,           // Anggap data segar selama 1 menit
     })
 
     // UID Specific Analytics
     const { data: uidData, isLoading: isUidLoading } = useQuery({
         queryKey: ['dashboard-uid', selectedBulan],
         queryFn: () => api.get(`/api/dashboard/uid${selectedBulan ? `?bulan=${selectedBulan}` : ''}`).then(r => r.data),
-        refetchInterval: 15000,
+        enabled: !!selectedBulan,   // Jangan fetch sebelum bulan dipilih
+        refetchInterval: 300000,    // 5 menit
+        staleTime: 60000,
     })
 
     const formatBulan = (val) => {
