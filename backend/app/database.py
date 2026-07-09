@@ -13,11 +13,11 @@ if not DATABASE_URL:
 
 engine = create_engine(
     DATABASE_URL,
-    pool_size=15,         # 15 standby per worker × 3 workers = 45 total koneksi normal
-    max_overflow=5,       # Max 5 overflow per worker = 15 extra (total max ~60, aman dari batas 100)
-    pool_timeout=20,      # Tunggu 20 detik sebelum raise error (jangan terlalu lama)
+    pool_size=25,         # 25 standby per worker × 3 workers = 75 koneksi normal
+    max_overflow=10,      # 10 overflow per worker = 30 extra (total max ~105, aman dari batas 300)
+    pool_timeout=20,      # Tunggu 20 detik sebelum raise error
     pool_recycle=1800,    # Reset koneksi setiap 30 menit
-    pool_pre_ping=True    # Cek koneksi sebelum dipakai (cegah zombie connection yang diam)
+    pool_pre_ping=True    # Cek koneksi sebelum dipakai (cegah zombie connection)
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

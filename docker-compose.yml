@@ -5,6 +5,16 @@ services:
     image: postgres:15-alpine
     container_name: metrik_db
     restart: always
+    # Naikkan max_connections dari default 100 ke 300
+    # shared_buffers = 25% dari RAM (VPS 4GB → 1GB)
+    # work_mem = memori per operasi sort/hash (300 koneksi × 4MB = max 1.2GB tapi hanya saat dipakai)
+    command: >
+      postgres
+      -c max_connections=300
+      -c shared_buffers=256MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c effective_cache_size=1GB
     environment:
       POSTGRES_USER: admin_pln
       POSTGRES_PASSWORD: RahasiaPassword123!
