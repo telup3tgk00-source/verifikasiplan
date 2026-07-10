@@ -18,13 +18,15 @@ def get_r2_client():
     global _r2_client
     if _r2_client is None:
         limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
-        _r2_client = httpx.AsyncClient(timeout=15.0, limits=limits)
+        # Pisahkan timeout agar connect (TCP handshake) punya waktu lebih lama jika jaringan lag
+        timeout = httpx.Timeout(connect=20.0, read=30.0, write=20.0, pool=20.0)
+        _r2_client = httpx.AsyncClient(timeout=timeout, limits=limits)
     return _r2_client
 
 def get_r2_semaphore():
     global _r2_semaphore
     if _r2_semaphore is None:
-        _r2_semaphore = asyncio.Semaphore(10)  # Batasi 10 fetch konstan per worker
+        _r2_semaphore = asyncio.Semaphore(15)  # Naikkan sedikit limit antrean conccurent
     return _r2_semaphore
 
 ACMT_BASE_URL = "https://portalapp.iconpln.co.id/acmt"
@@ -92,7 +94,7 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str, client_cookie: str = N
         r2_url = f"https://pub-da52918545424c74a6ab1ec35249a14e.r2.dev/{idpel}.jpg"
         print(f"[FOTO] BYPASS ACMT -> Ambil dari R2: {r2_url}")
         
-        max_retries = 3
+        max_retries = 5
         r2_client = get_r2_client()
         sem = get_r2_semaphore()
         
@@ -108,8 +110,9 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str, client_cookie: str = N
             except httpx.RequestError as e:
                 err_msg = str(e) or e.__class__.__name__
                 if attempt < max_retries - 1:
-                    print(f"[FOTO] Retry {attempt+1}/{max_retries} ke R2 untuk {idpel} karena error: {err_msg}")
-                    await asyncio.sleep(1)
+                    wait_time = attempt * 1.5 + 1  # 1s, 2.5s, 4s, 5.5s...
+                    print(f"[FOTO] Retry {attempt+1}/{max_retries} ke R2 untuk {idpel} karena error: {err_msg}. Tunggu {wait_time}s")
+                    await asyncio.sleep(wait_time)
                 else:
                     raise RuntimeError(f"Gagal mengambil foto dari R2 setelah {max_retries} percobaan: {err_msg}")
     # ========================================================
