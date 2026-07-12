@@ -64,7 +64,7 @@ class UploadSession(Base):
 class VerificationRecord(Base):
     __tablename__ = "verification_records"
     id              = Column(Integer, primary_key=True, index=True)
-    session_id      = Column(Integer, ForeignKey("upload_sessions.id"))
+    session_id      = Column(Integer, ForeignKey("upload_sessions.id"), index=True)
     id_pelanggan    = Column(String(50), index=True)
     unit            = Column(String(50), nullable=True)
     kode_nama_biller = Column(String(200), nullable=True)
@@ -93,7 +93,7 @@ class VerificationRecord(Base):
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id          = Column(Integer, primary_key=True, index=True)
-    record_id   = Column(Integer, ForeignKey("verification_records.id"))
+    record_id   = Column(Integer, ForeignKey("verification_records.id"), index=True)
     user_id     = Column(Integer, ForeignKey("users.id"))
     action      = Column(String(100))
     old_status  = Column(String(50), nullable=True)
@@ -104,7 +104,7 @@ class AuditLog(Base):
 class AssignmentBatch(Base):
     __tablename__ = "assignment_batches"
     id             = Column(Integer, primary_key=True, index=True)
-    session_id     = Column(Integer, ForeignKey("upload_sessions.id"))
+    session_id     = Column(Integer, ForeignKey("upload_sessions.id"), index=True)
     operator_id    = Column(Integer, ForeignKey("users.id"))
     total_assigned = Column(Integer, default=0)
     selesai        = Column(Integer, default=0)

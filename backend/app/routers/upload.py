@@ -329,14 +329,22 @@ def background_delete_session(session_id: int):
                 break
             total_deleted += res.rowcount
 
-        # 4. Terakhir hapus sesi menggunakan raw SQL agar tidak men-trigger ORM cascades yang menyebabkan UPDATE session_id=NULL (deadlock)
-        print(f"[{datetime.now()}] [SESSION {session_id}] Menghapus tabel utama upload_sessions...")
-        db.execute(
-            text("DELETE FROM upload_sessions WHERE id = :sid"),
+        # 4. Terakhir hapus sesi, tapi pastikan dulu tidak ada sisa record (mencegah Foreign Key crash jika terjadi race condition)
+        count_sisa = db.execute(
+            text("SELECT COUNT(*) FROM verification_records WHERE session_id = :sid"),
             {"sid": session_id}
-        )
-        db.commit()
-        print(f"[{datetime.now()}] [SESSION {session_id}] SELESAI: Sesi berhasil dihapus secara keseluruhan.")
+        ).scalar()
+        
+        if count_sisa == 0:
+            db.execute(
+                text("DELETE FROM upload_sessions WHERE id = :sid"),
+                {"sid": session_id}
+            )
+            db.commit()
+            print(f"[{datetime.now()}] [SESSION {session_id}] Sesi berhasil dihapus total dari database.")
+        else:
+            print(f"[{datetime.now()}] [SESSION {session_id}] GAGAL HAPUS SESI: Masih ada {count_sisa} data tersisa! Kemungkinan proses lain masih berjalan.")
+
     except Exception as e:
         db.rollback()
         import traceback
