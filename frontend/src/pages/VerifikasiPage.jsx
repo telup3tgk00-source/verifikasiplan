@@ -273,7 +273,7 @@ function AcmtSessionPanel() {
             const r = await api.get('/api/foto/session/status')
             return r.data
         },
-        refetchInterval: 5000 // Polling setiap 5 detik agar otomatis hijau saat ekstensi sync
+        refetchInterval: 30000 // Polling setiap 30 detik
     })
 
     const handleSave = async () => {
