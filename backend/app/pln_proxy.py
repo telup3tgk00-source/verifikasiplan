@@ -10,24 +10,7 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
-# Global instances untuk R2 agar TCP connection di-reuse (keep-alive)
-_r2_client = None
-_r2_semaphore = None
 
-def get_r2_client():
-    global _r2_client
-    if _r2_client is None:
-        limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
-        # Pisahkan timeout agar connect (TCP handshake) punya waktu lebih lama jika jaringan lag
-        timeout = httpx.Timeout(connect=20.0, read=30.0, write=20.0, pool=20.0)
-        _r2_client = httpx.AsyncClient(timeout=timeout, limits=limits)
-    return _r2_client
-
-def get_r2_semaphore():
-    global _r2_semaphore
-    if _r2_semaphore is None:
-        _r2_semaphore = asyncio.Semaphore(15)  # Naikkan sedikit limit antrean conccurent
-    return _r2_semaphore
 
 ACMT_BASE_URL = "https://portalapp.iconpln.co.id/acmt"
 PHOTO_URL     = f"{ACMT_BASE_URL}/DisplayBlobServlet1"
@@ -84,40 +67,7 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str, client_cookie: str = N
     """
     print(f"[FOTO] idpel={idpel} blth={blth} fotoke={fotoke}")
 
-    # ========================================================
-    # BYPASS UNTUK BULAN 7 (202607) - AMBIL DARI R2 CLOUDFLARE
-    # ========================================================
-    if blth == "202607":
-        if fotoke != "1":
-            raise RuntimeError("Backup Lampung hanya memiliki 1 foto utama per IDPEL")
-            
-        r2_url = f"https://pub-da52918545424c74a6ab1ec35249a14e.r2.dev/{idpel}.jpg"
-        print(f"[FOTO] BYPASS ACMT -> Ambil dari R2: {r2_url}")
-        
-        max_retries = 5
-        r2_client = get_r2_client()
-        sem = get_r2_semaphore()
-        
-        for attempt in range(max_retries):
-            try:
-                async with sem:
-                    r2_resp = await r2_client.get(r2_url)
-                    
-                if r2_resp.status_code == 200:
-                    return r2_resp.content, r2_resp.headers.get("content-type", "image/jpeg")
-                else:
-                    raise RuntimeError(f"Foto idpel {idpel} tidak tersedia di server R2 Backup (Status: {r2_resp.status_code})")
-            except httpx.RequestError as e:
-                err_msg = str(e) or e.__class__.__name__
-                if attempt < max_retries - 1:
-                    wait_time = attempt * 1.5 + 1  # 1s, 2.5s, 4s, 5.5s...
-                    print(f"[FOTO] Retry {attempt+1}/{max_retries} ke R2 untuk {idpel} karena error: {err_msg}. Tunggu {wait_time}s")
-                    await asyncio.sleep(wait_time)
-                else:
-                    raise RuntimeError(f"Gagal mengambil foto dari R2 setelah {max_retries} percobaan: {err_msg}")
-    # ========================================================
 
-    # --- LOGIKA NORMAL KE ACMT (UNTUK BULAN LAIN) ---
     cookie_string = client_cookie or _session_cache.get("cookie_string")
     
     if client_cookie:
