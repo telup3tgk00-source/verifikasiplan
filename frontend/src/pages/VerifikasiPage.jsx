@@ -176,6 +176,7 @@ function LatestPhoto({ idpel, blth }) {
 
     useEffect(() => {
         let isMounted = true
+        let currentUrl = null
         setFotoState({ loading: true, url: null, error: null })
         const token = useAuthStore.getState().token
         fetch(`/api/foto?idpel=${encodeURIComponent(idpel)}&blth=${blth}&fotoke=1`, { headers: { Authorization: `Bearer ${token}` } })
@@ -185,15 +186,21 @@ function LatestPhoto({ idpel, blth }) {
                     throw new Error(err.detail || `HTTP ${r.status}`)
                 }
                 const blob = await r.blob()
-                if (isMounted) setFotoState({ loading: false, url: URL.createObjectURL(blob), error: null })
+                if (isMounted) {
+                    currentUrl = URL.createObjectURL(blob)
+                    setFotoState({ loading: false, url: currentUrl, error: null })
+                }
             })
             .catch(e => {
-                const msg = e.message.includes('401') || e.message.includes('EXPIRED') || e.message.includes('belum diset')
+                const msg = e?.message?.includes('401') || e?.message?.includes('EXPIRED') || e?.message?.includes('belum diset')
                     ? 'Sesi ACMT harus di input ulang'
-                    : e.message;
+                    : (e?.message || 'Gagal memuat foto');
                 if (isMounted) setFotoState({ loading: false, url: null, error: msg })
             })
-        return () => { isMounted = false }
+        return () => { 
+            isMounted = false
+            if (currentUrl) URL.revokeObjectURL(currentUrl)
+        }
     }, [idpel, blth])
 
     return (
@@ -513,7 +520,10 @@ export default function VerifikasiPage() {
         || blthList[0]
 
     const handleFotoClick = async (idpel, blth, fotoke) => {
-        setActiveFoto({ idpel, blth, fotoke, loading: true, url: null, error: null })
+        setActiveFoto(prev => {
+            if (prev?.url) URL.revokeObjectURL(prev.url);
+            return { idpel, blth, fotoke, loading: true, url: null, error: null };
+        })
         try {
             const token = useAuthStore.getState().token
             const resp = await fetch(
@@ -528,9 +538,9 @@ export default function VerifikasiPage() {
             const url = URL.createObjectURL(blob)
             setActiveFoto(prev => ({ ...prev, loading: false, url }))
         } catch (e) {
-            const msg = e.message.includes('401') || e.message.includes('EXPIRED') || e.message.includes('belum diset')
+            const msg = e?.message?.includes('401') || e?.message?.includes('EXPIRED') || e?.message?.includes('belum diset')
                 ? 'Sesi ACMT harus di input ulang'
-                : e.message;
+                : (e?.message || 'Gagal memuat foto');
             setActiveFoto(prev => ({ ...prev, loading: false, error: msg }))
             if (msg.includes('input ulang')) toast.error(msg)
         }
@@ -649,7 +659,7 @@ export default function VerifikasiPage() {
     return (
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
             {/* Foto Meter Modal */}
-            {activeFoto && <FotoModal foto={activeFoto} onClose={() => setActiveFoto(null)} />}
+            {activeFoto && <FotoModal foto={activeFoto} onClose={() => { if (activeFoto.url) URL.revokeObjectURL(activeFoto.url); setActiveFoto(null); }} />}
             {/* Header + Filters */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                 <div>
