@@ -10,17 +10,9 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
-# Global client for ACMT to reuse connections (HTTP keep-alive)
-_acmt_client = None
-
-def get_acmt_client():
-    global _acmt_client
-    if _acmt_client is None:
-        limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
-        timeout = httpx.Timeout(connect=20.0, read=30.0, write=20.0, pool=20.0)
-        _acmt_client = httpx.AsyncClient(timeout=timeout, limits=limits, verify=False, follow_redirects=False)
-    return _acmt_client
-
+# Pre-configured limits — safe to be module-level (no event loop dependency)
+_ACMT_LIMITS = httpx.Limits(max_keepalive_connections=10, max_connections=20)
+_ACMT_TIMEOUT = httpx.Timeout(connect=15.0, read=25.0, write=15.0, pool=15.0)
 
 
 
@@ -108,8 +100,13 @@ async def fetch_photo(idpel: str, blth: str, fotoke: str, client_cookie: str = N
         "Cookie": cookie_string,   # Forward SEMUA cookie
     }
 
-    client = get_acmt_client()
-    resp = await client.get(PHOTO_URL, params=params, headers=headers)
+    async with httpx.AsyncClient(
+        timeout=_ACMT_TIMEOUT,
+        limits=_ACMT_LIMITS,
+        verify=False,
+        follow_redirects=False,
+    ) as client:
+        resp = await client.get(PHOTO_URL, params=params, headers=headers)
 
     # Tangkap jika server ACMT merotasi cookie (misal: TS01)
     if resp.cookies:
