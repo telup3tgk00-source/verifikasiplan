@@ -242,8 +242,8 @@ def get_sessions(db: Session = Depends(get_db), current_user: User = Depends(get
             ).count()
             total_beda = total_records - total_match
             
-        # Jangan tampilkan sesi jika tidak ada record untuk user ini (kecuali Super Admin atau pembuat sesi murni kosong)
-        if total_records == 0 and current_user.role != RoleEnum.super_admin:
+        # Jangan tampilkan sesi jika tidak ada record untuk user ini (kecuali Super Admin atau sesi masih diproses)
+        if total_records == 0 and current_user.role != RoleEnum.super_admin and s.status != 'processing':
             continue
 
         result.append({
