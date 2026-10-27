@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: metrik_testingdev_db
+    restart: always
+    # Optimasi memory PostgreSQL untuk VPS Hostinger (KVM 1 / KVM 2 / KVM 4)
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c effective_cache_size=1GB
+    environment:
+      POSTGRES_USER: admin_pln
+      POSTGRES_PASSWORD: RahasiaPassword123!
+      POSTGRES_DB: pln_kwh
+    volumes:
+      - postgres_testingdev_data:/var/lib/postgresql/data
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: metrik_testingdev_backend
+    restart: always
+    volumes:
+      - ./backend/uploads:/app/uploads
+    environment:
+      - DATABASE_URL=postgresql://admin_pln:RahasiaPassword123!@db:5432/pln_kwh
+      - SECRET_KEY=kunci-rahasia-testingdev-pln-metrik
+      - FRONTEND_URL=http://localhost
+      - DEBUG=true
+      - BOOKMARKLET_SECRET=metrik-sync-2026
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: metrik_testingdev_frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.testingdev.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+
+volumes:
+  postgres_testingdev_data:
