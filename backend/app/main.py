@@ -103,12 +103,18 @@ app = FastAPI(
     openapi_url="/openapi.json" if DEBUG else None,
 )
 
-# CORS agar React bisa akses
-origins = [
+# CORS agar React & tools bisa akses
+raw_origins = [
     os.getenv("FRONTEND_URL", "http://localhost:5173"), 
+    "http://localhost",
     "http://127.0.0.1:5173",
-    "https://portalapp.iconpln.co.id"
+    "https://portalapp.iconpln.co.id",
+    "http://prototypemetrik.co.id",
+    "https://prototypemetrik.co.id",
+    "http://www.prototypemetrik.co.id",
+    "https://www.prototypemetrik.co.id",
 ]
+origins = list({o.strip() for o in raw_origins if o})
 
 app.add_middleware(
     CORSMiddleware,

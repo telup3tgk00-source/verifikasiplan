@@ -31,7 +31,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://admin_pln:RahasiaPassword123!@db:5432/pln_kwh
       - SECRET_KEY=kunci-rahasia-testingdev-pln-metrik
-      - FRONTEND_URL=http://localhost
+      - FRONTEND_URL=http://prototypemetrik.co.id
       - DEBUG=true
       - BOOKMARKLET_SECRET=metrik-sync-2026
     depends_on:
