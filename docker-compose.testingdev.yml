@@ -5,7 +5,9 @@ services:
     image: postgres:15-alpine
     container_name: metrik_testingdev_db
     restart: always
-    # Optimasi memory PostgreSQL untuk VPS Hostinger (KVM 1 / KVM 2 / KVM 4)
+    # Optimasi PostgreSQL untuk VPS Hostinger
+    # - max_connections: batasan koneksi konkuren
+    # - shared_buffers: alokasi memori buffer PostgreSQL
     command: >
       postgres
       -c max_connections=200
@@ -14,11 +16,13 @@ services:
       -c maintenance_work_mem=64MB
       -c effective_cache_size=1GB
     environment:
-      POSTGRES_USER: admin_pln
-      POSTGRES_PASSWORD: RahasiaPassword123!
-      POSTGRES_DB: pln_kwh
+      POSTGRES_USER: admin_testingdev
+      POSTGRES_PASSWORD: TestingDevPassword123!
+      POSTGRES_DB: pln_testingdev
     volumes:
-      - postgres_testingdev_data:/var/lib/postgresql/data
+      - testingdev_postgres_data:/var/lib/postgresql/data
+    networks:
+      - testingdev_network
 
   backend:
     build: 
@@ -29,13 +33,14 @@ services:
     volumes:
       - ./backend/uploads:/app/uploads
     environment:
-      - DATABASE_URL=postgresql://admin_pln:RahasiaPassword123!@db:5432/pln_kwh
-      - SECRET_KEY=kunci-rahasia-testingdev-pln-metrik
-      - FRONTEND_URL=http://prototypemetrik.co.id
+      - DATABASE_URL=postgresql://admin_testingdev:TestingDevPassword123!@db:5432/pln_testingdev
+      - SECRET_KEY=kunci-rahasia-testingdev-pln-metrik-2025
+      - FRONTEND_URL=https://prototypemetrik.co.id
       - DEBUG=true
-      - BOOKMARKLET_SECRET=metrik-sync-2026
     depends_on:
       - db
+    networks:
+      - testingdev_network
 
   frontend:
     build:
@@ -44,6 +49,8 @@ services:
     container_name: metrik_testingdev_frontend
     restart: always
     ports:
+      # Port 80 & 443 untuk akses web (jika port 80/443 sudah dipakai aplikasi lain di VPS,
+      # ubah ke misal "8080:80" dan "8443:443")
       - "80:80"
       - "443:443"
     volumes:
@@ -51,6 +58,12 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend
+    networks:
+      - testingdev_network
 
 volumes:
-  postgres_testingdev_data:
+  testingdev_postgres_data:
+
+networks:
+  testingdev_network:
+    driver: bridge
